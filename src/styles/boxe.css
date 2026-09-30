@@ -1,0 +1,110 @@
+.logo-icon {
+  
+    display           : flex;
+
+    align-items       : center;
+
+    justify-content   : center;
+
+    position          : relative;
+
+    overflow          : hidden;
+
+    cursor            : pointer;
+
+    background        : linear-gradient(
+          135deg,
+          var(--gradient-start),
+          var(--gradient-end)
+      );
+
+    box-shadow        : 0 10px 30px var(--glow-color);
+
+    transition        : all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.logo-icon span {
+
+    color             : white;
+
+    font-weight       : 900;
+
+    font-size         : 0.95rem;
+
+    letter-spacing    : -0.05em;
+
+    font-family       : "Syne", sans-serif;
+
+    position          : relative;
+
+    z-index           : 2;
+}
+
+.logo-icon::before {
+
+  content             : "";
+
+  position            : absolute;
+
+  width               : 130%;
+
+  height              : 130%;
+
+  background          : radial-gradient(rgba(255, 255, 255, 0.25), transparent 70%);
+
+  opacity             : 0;
+
+  transition          : 0.35s;
+}
+
+.logo-icon:hover {
+
+  transform           : translateY(-3px) rotate(-3deg) scale(1.05);
+}
+
+.logo-icon:hover::before {
+  opacity             : 1;
+}
+
+.logo-icon::after {
+  content             : "";
+
+  position            : absolute;
+
+  top                 : -30%;
+
+  left                : -120%;
+
+  width               : 60%;
+
+  height              : 160%;
+
+  background          : linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+
+  transform           : rotate(20deg);
+}
+
+.logo-icon:hover::after {
+
+  animation           : logoShine 0.8s ease;
+}
+
+@keyframes logoShine{
+
+          from{
+
+              left:-120%;
+
+          }
+
+          to{
+
+              left:160%;
+
+          }
+}

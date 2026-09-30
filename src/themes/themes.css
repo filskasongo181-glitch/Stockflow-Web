@@ -1,0 +1,1901 @@
+/* ============================================================
+   StockFlow — Palettes complètes alignées ThemeBackground
+   20 thèmes : dark/light × galaxy, simple, luxury, exotic,
+   verdatre, glamour, graphite, volcanic, oceanic, modern
+   ============================================================ */
+
+[data-theme="dark-galaxy"] {
+  /* Surfaces */
+  --bg: #05020d;
+  --fg: #0b0520;
+  --surface: #0b0520;
+  --surface2: #13082d;
+  --surface3: #1b0b3d;
+
+  /* Texte */
+  --text: #e0e7ff;
+  --text-secondary: #a5b4fc;
+  --text-disabled: #6366f1;
+
+  /* Accent */
+  --accent: #8b5cf6;
+  --accent-hover: #7c3aed;
+  --accent2: #a855f7;
+
+  /* Boutons */
+  --button: #8b5cf6;
+  --button-hover: #7c3aed;
+  --button-text: #ffffff;
+  --button-secondary: #13082d;
+  --button-sec-hover: #1b0b3d;
+  --button-secondary-text: #e0e7ff;
+
+  /* Inputs */
+  --input-bg: #0b0520;
+  --input-border: #6366f1;
+  --input-hover: #13082d;
+  --input-focus: #8b5cf6;
+  --input-placeholder: #6366f1;
+
+  /* Sidebar */
+  --sidebar-bg: #0b0520;
+  --sidebar-active: #8b5cf6;
+  --sidebar-hover: #13082d;
+  --sidebar-text: #a5b4fc;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #13082d;
+  --table-row: #0b0520;
+  --table-row-alt: #05020d;
+  --table-row-hover: #13082d;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #818cf8;
+  --info-bg: #1e1b4b;
+
+  /* Divers */
+  --highlight: #13082d;
+  --border: rgba(255,255,255,0.10);
+  --divider: #13082d;
+  --icon: #a5b4fc;
+  --icon-active: #8b5cf6;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(99,102,241,0.10);
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-hover: rgba(255,255,255,0.08);
+  --gradient-start: #6366f1;
+  --gradient-end: #a855f7;
+  --glow-color: rgba(99,102,241,0.40);
+  --logo-glow: rgba(99,102,241,0.60);
+  --card-bg: rgba(10,10,30,0.85);
+  --card-hover: #13082d;
+  --card-border: rgba(255,255,255,0.12);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #6366f1;
+  --scroll-thumb-hover: #a5b4fc;
+  --focus-ring: rgba(99,102,241,0.40);
+  --badge-bg: #1e1b4b;
+  --badge-text: #8b5cf6;
+  --selection-bg: #1e1b4b;
+  --selection-text: #e0e7ff;
+  --surface-hover: #13082d;
+  --active-bg: #1e1b4b;
+  --active-border: #8b5cf6;
+}
+
+[data-theme="light-galaxy"] {
+  /* Surfaces */
+  --bg: #faf9ff;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f1efff;
+  --surface3: #e6e2ff;
+
+  /* Texte */
+  --text: #1e1b4b;
+  --text-secondary: #5b5f97;
+  --text-disabled: #a5a8d6;
+
+  /* Accent */
+  --accent: #6d5ce7;
+  --accent-hover: #5b4bd6;
+  --accent2: #8b5cf6;
+
+  /* Boutons */
+  --button: #6d5ce7;
+  --button-hover: #5b4bd6;
+  --button-text: #ffffff;
+  --button-secondary: #f1efff;
+  --button-sec-hover: #e6e2ff;
+  --button-secondary-text: #1e1b4b;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #f1efff;
+  --input-focus: #6d5ce7;
+  --input-placeholder: #a5a8d6;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #6d5ce7;
+  --sidebar-hover: #f1efff;
+  --sidebar-text: #5b5f97;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #f1efff;
+  --table-row: #ffffff;
+  --table-row-alt: #faf9ff;
+  --table-row-hover: #f1efff;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #6366f1;
+  --info-bg: #eef2ff;
+
+  /* Divers */
+  --highlight: #f1efff;
+  --border: rgba(15,23,42,0.10);
+  --divider: #f1efff;
+  --icon: #5b5f97;
+  --icon-active: #6d5ce7;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(99,102,241,0.08);
+  --glass-border: rgba(99,102,241,0.20);
+  --glass-hover: rgba(99,102,241,0.12);
+  --gradient-start: #6366f1;
+  --gradient-end: #8b5cf6;
+  --glow-color: rgba(99,102,241,0.20);
+  --logo-glow: rgba(99,102,241,0.40);
+  --card-bg: rgba(255,255,255,0.88);
+  --card-hover: #f1efff;
+  --card-border: rgba(99,102,241,0.20);
+
+  --shadow: rgba(30,27,75,0.08);
+  --shadow-soft: rgba(30,27,75,0.04);
+  --overlay: rgba(30,27,75,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(99,102,241,0.20);
+  --badge-bg: #eef2ff;
+  --badge-text: #6d5ce7;
+  --selection-bg: #eef2ff;
+  --selection-text: #1e1b4b;
+  --surface-hover: #f1efff;
+  --active-bg: #eef2ff;
+  --active-border: #6d5ce7;
+}
+
+[data-theme="dark-simple"] {
+  /* Surfaces */
+  --bg: #080c14;
+  --fg: #0f172a;
+  --surface: #0f172a;
+  --surface2: #172033;
+  --surface3: #1e293b;
+
+  /* Texte */
+  --text: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-disabled: #64748b;
+
+  /* Accent */
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent2: #60a5fa;
+
+  /* Boutons */
+  --button: #3b82f6;
+  --button-hover: #2563eb;
+  --button-text: #ffffff;
+  --button-secondary: #172033;
+  --button-sec-hover: #1e293b;
+  --button-secondary-text: #e2e8f0;
+
+  /* Inputs */
+  --input-bg: #0f172a;
+  --input-border: #64748b;
+  --input-hover: #172033;
+  --input-focus: #3b82f6;
+  --input-placeholder: #64748b;
+
+  /* Sidebar */
+  --sidebar-bg: #0f172a;
+  --sidebar-active: #3b82f6;
+  --sidebar-hover: #172033;
+  --sidebar-text: #94a3b8;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #172033;
+  --table-row: #0f172a;
+  --table-row-alt: #080c14;
+  --table-row-hover: #172033;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #3b82f6;
+  --info-bg: #1e3a5f;
+
+  /* Divers */
+  --highlight: #172033;
+  --border: rgba(255,255,255,0.10);
+  --divider: #172033;
+  --icon: #94a3b8;
+  --icon-active: #3b82f6;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(59,130,246,0.10);
+  --glass-border: rgba(255,255,255,0.12);
+  --glass-hover: rgba(59,130,246,0.08);
+  --gradient-start: #3b82f6;
+  --gradient-end: #60a5fa;
+  --glow-color: rgba(59,130,246,0.40);
+  --logo-glow: rgba(59,130,246,0.60);
+  --card-bg: rgba(10,15,30,0.85);
+  --card-hover: #172033;
+  --card-border: rgba(255,255,255,0.12);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #64748b;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(59,130,246,0.40);
+  --badge-bg: #1e3a5f;
+  --badge-text: #3b82f6;
+  --selection-bg: #1e3a5f;
+  --selection-text: #e2e8f0;
+  --surface-hover: #172033;
+  --active-bg: #1e3a5f;
+  --active-border: #3b82f6;
+}
+
+[data-theme="light-simple"] {
+  /* Surfaces */
+  --bg: #f8fafc;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --surface3: #e8f0f8;
+
+  /* Texte */
+  --text: #0f172a;
+  --text-secondary: #64748b;
+  --text-disabled: #94a3b8;
+
+  /* Accent */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent2: #3b82f6;
+
+  /* Boutons */
+  --button: #2563eb;
+  --button-hover: #1d4ed8;
+  --button-text: #ffffff;
+  --button-secondary: #f1f5f9;
+  --button-sec-hover: #e8f0f8;
+  --button-secondary-text: #0f172a;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #f1f5f9;
+  --input-focus: #2563eb;
+  --input-placeholder: #94a3b8;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #2563eb;
+  --sidebar-hover: #f1f5f9;
+  --sidebar-text: #64748b;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #f1f5f9;
+  --table-row: #ffffff;
+  --table-row-alt: #f8fafc;
+  --table-row-hover: #f1f5f9;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #2563eb;
+  --info-bg: #eff6ff;
+
+  /* Divers */
+  --highlight: #f1f5f9;
+  --border: rgba(15,23,42,0.10);
+  --divider: #f1f5f9;
+  --icon: #64748b;
+  --icon-active: #2563eb;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(255,255,255,0.78);
+  --glass-border: rgba(37,99,235,0.12);
+  --glass-hover: rgba(37,99,235,0.06);
+  --gradient-start: #2563eb;
+  --gradient-end: #60a5fa;
+  --glow-color: rgba(37,99,235,0.16);
+  --logo-glow: rgba(37,99,235,0.28);
+  --card-bg: rgba(255,255,255,0.94);
+  --card-hover: #f1f5f9;
+  --card-border: rgba(37,99,235,0.12);
+
+  --shadow: rgba(15,23,42,0.08);
+  --shadow-soft: rgba(15,23,42,0.04);
+  --overlay: rgba(15,23,42,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(37,99,235,0.16);
+  --badge-bg: #eff6ff;
+  --badge-text: #2563eb;
+  --selection-bg: #eff6ff;
+  --selection-text: #0f172a;
+  --surface-hover: #f1f5f9;
+  --active-bg: #eff6ff;
+  --active-border: #2563eb;
+}
+
+[data-theme="dark-luxury"] {
+  /* Surfaces */
+  --bg: #080704;
+  --fg: #12100a;
+  --surface: #12100a;
+  --surface2: #1b160b;
+  --surface3: #241c0c;
+
+  /* Texte */
+  --text: #f5e6c8;
+  --text-secondary: #c4a35a;
+  --text-disabled: #7a6530;
+
+  /* Accent */
+  --accent: #d4af37;
+  --accent-hover: #b8962e;
+  --accent2: #f5d76e;
+
+  /* Boutons */
+  --button: #d4af37;
+  --button-hover: #b8962e;
+  --button-text: #ffffff;
+  --button-secondary: #1b160b;
+  --button-sec-hover: #241c0c;
+  --button-secondary-text: #f5e6c8;
+
+  /* Inputs */
+  --input-bg: #12100a;
+  --input-border: #7a6530;
+  --input-hover: #1b160b;
+  --input-focus: #d4af37;
+  --input-placeholder: #7a6530;
+
+  /* Sidebar */
+  --sidebar-bg: #12100a;
+  --sidebar-active: #d4af37;
+  --sidebar-hover: #1b160b;
+  --sidebar-text: #c4a35a;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #1b160b;
+  --table-row: #12100a;
+  --table-row-alt: #080704;
+  --table-row-hover: #1b160b;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #d4af37;
+  --info-bg: #2a2208;
+
+  /* Divers */
+  --highlight: #1b160b;
+  --border: rgba(255,255,255,0.10);
+  --divider: #1b160b;
+  --icon: #c4a35a;
+  --icon-active: #d4af37;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(212,175,55,0.10);
+  --glass-border: rgba(255,215,0,0.20);
+  --glass-hover: rgba(212,175,55,0.08);
+  --gradient-start: #d4af37;
+  --gradient-end: #b8962e;
+  --glow-color: rgba(212,175,55,0.40);
+  --logo-glow: rgba(212,175,55,0.60);
+  --card-bg: rgba(10,8,0,0.85);
+  --card-hover: #1b160b;
+  --card-border: rgba(255,215,0,0.20);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #7a6530;
+  --scroll-thumb-hover: #c4a35a;
+  --focus-ring: rgba(212,175,55,0.40);
+  --badge-bg: #2a2208;
+  --badge-text: #d4af37;
+  --selection-bg: #2a2208;
+  --selection-text: #f5e6c8;
+  --surface-hover: #1b160b;
+  --active-bg: #2a2208;
+  --active-border: #d4af37;
+}
+
+[data-theme="light-luxury"] {
+  /* Surfaces */
+  --bg: #fffdf7;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #faf5e8;
+  --surface3: #f4ead2;
+
+  /* Texte */
+  --text: #2a2208;
+  --text-secondary: #7a6530;
+  --text-disabled: #b8a56a;
+
+  /* Accent */
+  --accent: #9a7215;
+  --accent-hover: #7a5a10;
+  --accent2: #d4af37;
+
+  /* Boutons */
+  --button: #9a7215;
+  --button-hover: #7a5a10;
+  --button-text: #ffffff;
+  --button-secondary: #faf5e8;
+  --button-sec-hover: #f4ead2;
+  --button-secondary-text: #2a2208;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #faf5e8;
+  --input-focus: #9a7215;
+  --input-placeholder: #b8a56a;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #9a7215;
+  --sidebar-hover: #faf5e8;
+  --sidebar-text: #7a6530;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #faf5e8;
+  --table-row: #ffffff;
+  --table-row-alt: #fffdf7;
+  --table-row-hover: #faf5e8;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #9a7215;
+  --info-bg: #faf5e8;
+
+  /* Divers */
+  --highlight: #faf5e8;
+  --border: rgba(15,23,42,0.10);
+  --divider: #faf5e8;
+  --icon: #7a6530;
+  --icon-active: #9a7215;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(212,175,55,0.10);
+  --glass-border: rgba(212,175,55,0.25);
+  --glass-hover: rgba(212,175,55,0.15);
+  --gradient-start: #d4af37;
+  --gradient-end: #f5d76e;
+  --glow-color: rgba(212,175,55,0.25);
+  --logo-glow: rgba(212,175,55,0.40);
+  --card-bg: rgba(255,252,230,0.90);
+  --card-hover: #faf5e8;
+  --card-border: rgba(212,175,55,0.25);
+
+  --shadow: rgba(42,34,8,0.08);
+  --shadow-soft: rgba(42,34,8,0.04);
+  --overlay: rgba(42,34,8,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(212,175,55,0.25);
+  --badge-bg: #faf5e8;
+  --badge-text: #9a7215;
+  --selection-bg: #faf5e8;
+  --selection-text: #2a2208;
+  --surface-hover: #faf5e8;
+  --active-bg: #faf5e8;
+  --active-border: #9a7215;
+}
+
+[data-theme="dark-exotic"] {
+  /* Surfaces */
+  --bg: #120604;
+  --fg: #241008;
+  --surface: #241008;
+  --surface2: #3a160b;
+  --surface3: #4a1c0c;
+
+  /* Texte */
+  --text: #ffedd5;
+  --text-secondary: #fdba74;
+  --text-disabled: #c2410c;
+
+  /* Accent */
+  --accent: #f97316;
+  --accent-hover: #ea580c;
+  --accent2: #fb923c;
+
+  /* Boutons */
+  --button: #f97316;
+  --button-hover: #ea580c;
+  --button-text: #ffffff;
+  --button-secondary: #3a160b;
+  --button-sec-hover: #4a1c0c;
+  --button-secondary-text: #ffedd5;
+
+  /* Inputs */
+  --input-bg: #241008;
+  --input-border: #c2410c;
+  --input-hover: #3a160b;
+  --input-focus: #f97316;
+  --input-placeholder: #c2410c;
+
+  /* Sidebar */
+  --sidebar-bg: #241008;
+  --sidebar-active: #f97316;
+  --sidebar-hover: #3a160b;
+  --sidebar-text: #fdba74;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #3a160b;
+  --table-row: #241008;
+  --table-row-alt: #120604;
+  --table-row-hover: #3a160b;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #f97316;
+  --info-bg: #3a160b;
+
+  /* Divers */
+  --highlight: #3a160b;
+  --border: rgba(255,255,255,0.10);
+  --divider: #3a160b;
+  --icon: #fdba74;
+  --icon-active: #f97316;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(249,115,22,0.10);
+  --glass-border: rgba(255,180,100,0.20);
+  --glass-hover: rgba(249,115,22,0.08);
+  --gradient-start: #f97316;
+  --gradient-end: #fb923c;
+  --glow-color: rgba(249,115,22,0.40);
+  --logo-glow: rgba(249,115,22,0.60);
+  --card-bg: rgba(28,8,0,0.85);
+  --card-hover: #3a160b;
+  --card-border: rgba(255,180,100,0.20);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #c2410c;
+  --scroll-thumb-hover: #fdba74;
+  --focus-ring: rgba(249,115,22,0.40);
+  --badge-bg: #3a160b;
+  --badge-text: #f97316;
+  --selection-bg: #3a160b;
+  --selection-text: #ffedd5;
+  --surface-hover: #3a160b;
+  --active-bg: #3a160b;
+  --active-border: #f97316;
+}
+
+[data-theme="light-exotic"] {
+  /* Surfaces */
+  --bg: #fffaf5;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #fff2e6;
+  --surface3: #ffe5d0;
+
+  /* Texte */
+  --text: #431407;
+  --text-secondary: #9a3412;
+  --text-disabled: #c2410c;
+
+  /* Accent */
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent2: #f97316;
+
+  /* Boutons */
+  --button: #c2410c;
+  --button-hover: #9a3412;
+  --button-text: #ffffff;
+  --button-secondary: #fff2e6;
+  --button-sec-hover: #ffe5d0;
+  --button-secondary-text: #431407;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #fff2e6;
+  --input-focus: #c2410c;
+  --input-placeholder: #c2410c;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #c2410c;
+  --sidebar-hover: #fff2e6;
+  --sidebar-text: #9a3412;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #fff2e6;
+  --table-row: #ffffff;
+  --table-row-alt: #fffaf5;
+  --table-row-hover: #fff2e6;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #c2410c;
+  --info-bg: #fff7ed;
+
+  /* Divers */
+  --highlight: #fff2e6;
+  --border: rgba(15,23,42,0.10);
+  --divider: #fff2e6;
+  --icon: #9a3412;
+  --icon-active: #c2410c;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(249,115,22,0.08);
+  --glass-border: rgba(249,115,22,0.25);
+  --glass-hover: rgba(249,115,22,0.12);
+  --gradient-start: #f97316;
+  --gradient-end: #fb923c;
+  --glow-color: rgba(249,115,22,0.20);
+  --logo-glow: rgba(249,115,22,0.35);
+  --card-bg: rgba(255,247,237,0.90);
+  --card-hover: #fff2e6;
+  --card-border: rgba(249,115,22,0.25);
+
+  --shadow: rgba(67,20,7,0.08);
+  --shadow-soft: rgba(67,20,7,0.04);
+  --overlay: rgba(67,20,7,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(249,115,22,0.20);
+  --badge-bg: #fff7ed;
+  --badge-text: #c2410c;
+  --selection-bg: #fff7ed;
+  --selection-text: #431407;
+  --surface-hover: #fff2e6;
+  --active-bg: #fff7ed;
+  --active-border: #c2410c;
+}
+
+[data-theme="dark-verdatre"] {
+  /* Surfaces */
+  --bg: #020b07;
+  --fg: #052019;
+  --surface: #052019;
+  --surface2: #07382c;
+  --surface3: #07533f;
+
+  /* Texte */
+  --text: #d1fae5;
+  --text-secondary: #6ee7b7;
+  --text-disabled: #047857;
+
+  /* Accent */
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --accent2: #34d399;
+
+  /* Boutons */
+  --button: #10b981;
+  --button-hover: #059669;
+  --button-text: #ffffff;
+  --button-secondary: #07382c;
+  --button-sec-hover: #07533f;
+  --button-secondary-text: #d1fae5;
+
+  /* Inputs */
+  --input-bg: #052019;
+  --input-border: #047857;
+  --input-hover: #07382c;
+  --input-focus: #10b981;
+  --input-placeholder: #047857;
+
+  /* Sidebar */
+  --sidebar-bg: #052019;
+  --sidebar-active: #10b981;
+  --sidebar-hover: #07382c;
+  --sidebar-text: #6ee7b7;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #07382c;
+  --table-row: #052019;
+  --table-row-alt: #020b07;
+  --table-row-hover: #07382c;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #10b981;
+  --info-bg: #064e3b;
+
+  /* Divers */
+  --highlight: #07382c;
+  --border: rgba(255,255,255,0.10);
+  --divider: #07382c;
+  --icon: #6ee7b7;
+  --icon-active: #10b981;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(16,185,129,0.10);
+  --glass-border: rgba(110,231,183,0.20);
+  --glass-hover: rgba(16,185,129,0.08);
+  --gradient-start: #10b981;
+  --gradient-end: #6ee7b7;
+  --glow-color: rgba(16,185,129,0.40);
+  --logo-glow: rgba(16,185,129,0.60);
+  --card-bg: rgba(2,15,8,0.85);
+  --card-hover: #07382c;
+  --card-border: rgba(110,231,183,0.20);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #047857;
+  --scroll-thumb-hover: #6ee7b7;
+  --focus-ring: rgba(16,185,129,0.40);
+  --badge-bg: #064e3b;
+  --badge-text: #10b981;
+  --selection-bg: #064e3b;
+  --selection-text: #d1fae5;
+  --surface-hover: #07382c;
+  --active-bg: #064e3b;
+  --active-border: #10b981;
+}
+
+[data-theme="light-verdatre"] {
+  /* Surfaces */
+  --bg: #f6fcf8;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #edf9f2;
+  --surface3: #dff3e8;
+
+  /* Texte */
+  --text: #022c22;
+  --text-secondary: #047857;
+  --text-disabled: #6ee7b7;
+
+  /* Accent */
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent2: #10b981;
+
+  /* Boutons */
+  --button: #047857;
+  --button-hover: #065f46;
+  --button-text: #ffffff;
+  --button-secondary: #edf9f2;
+  --button-sec-hover: #dff3e8;
+  --button-secondary-text: #022c22;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #edf9f2;
+  --input-focus: #047857;
+  --input-placeholder: #6ee7b7;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #047857;
+  --sidebar-hover: #edf9f2;
+  --sidebar-text: #047857;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #edf9f2;
+  --table-row: #ffffff;
+  --table-row-alt: #f6fcf8;
+  --table-row-hover: #edf9f2;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #047857;
+  --info-bg: #ecfdf5;
+
+  /* Divers */
+  --highlight: #edf9f2;
+  --border: rgba(15,23,42,0.10);
+  --divider: #edf9f2;
+  --icon: #047857;
+  --icon-active: #047857;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(16,185,129,0.08);
+  --glass-border: rgba(16,185,129,0.25);
+  --glass-hover: rgba(16,185,129,0.12);
+  --gradient-start: #10b981;
+  --gradient-end: #34d399;
+  --glow-color: rgba(16,185,129,0.20);
+  --logo-glow: rgba(16,185,129,0.35);
+  --card-bg: rgba(236,253,245,0.90);
+  --card-hover: #edf9f2;
+  --card-border: rgba(16,185,129,0.25);
+
+  --shadow: rgba(2,44,34,0.08);
+  --shadow-soft: rgba(2,44,34,0.04);
+  --overlay: rgba(2,44,34,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(16,185,129,0.20);
+  --badge-bg: #ecfdf5;
+  --badge-text: #047857;
+  --selection-bg: #ecfdf5;
+  --selection-text: #022c22;
+  --surface-hover: #edf9f2;
+  --active-bg: #ecfdf5;
+  --active-border: #047857;
+}
+
+[data-theme="dark-glamour"] {
+  /* Surfaces */
+  --bg: #10030a;
+  --fg: #210713;
+  --surface: #210713;
+  --surface2: #330b1f;
+  --surface3: #450d29;
+
+  /* Texte */
+  --text: #fce7f3;
+  --text-secondary: #f9a8d4;
+  --text-disabled: #be185d;
+
+  /* Accent */
+  --accent: #db2777;
+  --accent-hover: #be185d;
+  --accent2: #f472b6;
+
+  /* Boutons */
+  --button: #db2777;
+  --button-hover: #be185d;
+  --button-text: #ffffff;
+  --button-secondary: #330b1f;
+  --button-sec-hover: #450d29;
+  --button-secondary-text: #fce7f3;
+
+  /* Inputs */
+  --input-bg: #210713;
+  --input-border: #be185d;
+  --input-hover: #330b1f;
+  --input-focus: #db2777;
+  --input-placeholder: #be185d;
+
+  /* Sidebar */
+  --sidebar-bg: #210713;
+  --sidebar-active: #db2777;
+  --sidebar-hover: #330b1f;
+  --sidebar-text: #f9a8d4;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #330b1f;
+  --table-row: #210713;
+  --table-row-alt: #10030a;
+  --table-row-hover: #330b1f;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #db2777;
+  --info-bg: #500724;
+
+  /* Divers */
+  --highlight: #330b1f;
+  --border: rgba(255,255,255,0.10);
+  --divider: #330b1f;
+  --icon: #f9a8d4;
+  --icon-active: #db2777;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(219,39,119,0.10);
+  --glass-border: rgba(244,114,182,0.20);
+  --glass-hover: rgba(219,39,119,0.08);
+  --gradient-start: #db2777;
+  --gradient-end: #f472b6;
+  --glow-color: rgba(219,39,119,0.40);
+  --logo-glow: rgba(219,39,119,0.60);
+  --card-bg: rgba(26,5,16,0.85);
+  --card-hover: #330b1f;
+  --card-border: rgba(244,114,182,0.20);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #be185d;
+  --scroll-thumb-hover: #f9a8d4;
+  --focus-ring: rgba(219,39,119,0.40);
+  --badge-bg: #500724;
+  --badge-text: #db2777;
+  --selection-bg: #500724;
+  --selection-text: #fce7f3;
+  --surface-hover: #330b1f;
+  --active-bg: #500724;
+  --active-border: #db2777;
+}
+
+[data-theme="light-glamour"] {
+  /* Surfaces */
+  --bg: #fffafd;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #fdf3f8;
+  --surface3: #f9e5ef;
+
+  /* Texte */
+  --text: #500724;
+  --text-secondary: #9d174d;
+  --text-disabled: #f9a8d4;
+
+  /* Accent */
+  --accent: #be185d;
+  --accent-hover: #9d174d;
+  --accent2: #db2777;
+
+  /* Boutons */
+  --button: #be185d;
+  --button-hover: #9d174d;
+  --button-text: #ffffff;
+  --button-secondary: #fdf3f8;
+  --button-sec-hover: #f9e5ef;
+  --button-secondary-text: #500724;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #fdf3f8;
+  --input-focus: #be185d;
+  --input-placeholder: #f9a8d4;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #be185d;
+  --sidebar-hover: #fdf3f8;
+  --sidebar-text: #9d174d;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #fdf3f8;
+  --table-row: #ffffff;
+  --table-row-alt: #fffafd;
+  --table-row-hover: #fdf3f8;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #be185d;
+  --info-bg: #fdf2f8;
+
+  /* Divers */
+  --highlight: #fdf3f8;
+  --border: rgba(15,23,42,0.10);
+  --divider: #fdf3f8;
+  --icon: #9d174d;
+  --icon-active: #be185d;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(219,39,119,0.08);
+  --glass-border: rgba(219,39,119,0.25);
+  --glass-hover: rgba(219,39,119,0.12);
+  --gradient-start: #db2777;
+  --gradient-end: #f472b6;
+  --glow-color: rgba(219,39,119,0.20);
+  --logo-glow: rgba(219,39,119,0.35);
+  --card-bg: rgba(255,240,246,0.90);
+  --card-hover: #fdf3f8;
+  --card-border: rgba(219,39,119,0.25);
+
+  --shadow: rgba(80,7,36,0.08);
+  --shadow-soft: rgba(80,7,36,0.04);
+  --overlay: rgba(80,7,36,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(219,39,119,0.20);
+  --badge-bg: #fdf2f8;
+  --badge-text: #be185d;
+  --selection-bg: #fdf2f8;
+  --selection-text: #500724;
+  --surface-hover: #fdf3f8;
+  --active-bg: #fdf2f8;
+  --active-border: #be185d;
+}
+
+[data-theme="dark-graphite"] {
+  /* Surfaces */
+  --bg: #070709;
+  --fg: #111113;
+  --surface: #111113;
+  --surface2: #1b1b1f;
+  --surface3: #25252a;
+
+  /* Texte */
+  --text: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-disabled: #52525b;
+
+  /* Accent */
+  --accent: #a1a1aa;
+  --accent-hover: #71717a;
+  --accent2: #d4d4d8;
+
+  /* Boutons */
+  --button: #a1a1aa;
+  --button-hover: #71717a;
+  --button-text: #ffffff;
+  --button-secondary: #1b1b1f;
+  --button-sec-hover: #25252a;
+  --button-secondary-text: #f4f4f5;
+
+  /* Inputs */
+  --input-bg: #111113;
+  --input-border: #52525b;
+  --input-hover: #1b1b1f;
+  --input-focus: #a1a1aa;
+  --input-placeholder: #52525b;
+
+  /* Sidebar */
+  --sidebar-bg: #111113;
+  --sidebar-active: #a1a1aa;
+  --sidebar-hover: #1b1b1f;
+  --sidebar-text: #a1a1aa;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #1b1b1f;
+  --table-row: #111113;
+  --table-row-alt: #070709;
+  --table-row-hover: #1b1b1f;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #a1a1aa;
+  --info-bg: #27272a;
+
+  /* Divers */
+  --highlight: #1b1b1f;
+  --border: rgba(255,255,255,0.10);
+  --divider: #1b1b1f;
+  --icon: #a1a1aa;
+  --icon-active: #a1a1aa;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(113,113,122,0.10);
+  --glass-border: rgba(255,255,255,0.10);
+  --glass-hover: rgba(113,113,122,0.08);
+  --gradient-start: #71717a;
+  --gradient-end: #a1a1aa;
+  --glow-color: rgba(113,113,122,0.30);
+  --logo-glow: rgba(113,113,122,0.50);
+  --card-bg: rgba(9,9,11,0.85);
+  --card-hover: #1b1b1f;
+  --card-border: rgba(255,255,255,0.10);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #52525b;
+  --scroll-thumb-hover: #a1a1aa;
+  --focus-ring: rgba(113,113,122,0.30);
+  --badge-bg: #27272a;
+  --badge-text: #a1a1aa;
+  --selection-bg: #27272a;
+  --selection-text: #f4f4f5;
+  --surface-hover: #1b1b1f;
+  --active-bg: #27272a;
+  --active-border: #a1a1aa;
+}
+
+[data-theme="light-graphite"] {
+  /* Surfaces */
+  --bg: #ffffff;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f4f4f5;
+  --surface3: #e7e7e9;
+
+  /* Texte */
+  --text: #18181b;
+  --text-secondary: #52525b;
+  --text-disabled: #a1a1aa;
+
+  /* Accent */
+  --accent: #3f3f46;
+  --accent-hover: #27272a;
+  --accent2: #52525b;
+
+  /* Boutons */
+  --button: #3f3f46;
+  --button-hover: #27272a;
+  --button-text: #ffffff;
+  --button-secondary: #f4f4f5;
+  --button-sec-hover: #e7e7e9;
+  --button-secondary-text: #18181b;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #f4f4f5;
+  --input-focus: #3f3f46;
+  --input-placeholder: #a1a1aa;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #3f3f46;
+  --sidebar-hover: #f4f4f5;
+  --sidebar-text: #52525b;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #f4f4f5;
+  --table-row: #ffffff;
+  --table-row-alt: #ffffff;
+  --table-row-hover: #f4f4f5;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #3f3f46;
+  --info-bg: #f4f4f5;
+
+  /* Divers */
+  --highlight: #f4f4f5;
+  --border: rgba(15,23,42,0.10);
+  --divider: #f4f4f5;
+  --icon: #52525b;
+  --icon-active: #3f3f46;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(82,82,91,0.07);
+  --glass-border: rgba(82,82,91,0.18);
+  --glass-hover: rgba(82,82,91,0.10);
+  --gradient-start: #52525b;
+  --gradient-end: #71717a;
+  --glow-color: rgba(82,82,91,0.15);
+  --logo-glow: rgba(82,82,91,0.25);
+  --card-bg: rgba(250,250,250,0.90);
+  --card-hover: #f4f4f5;
+  --card-border: rgba(82,82,91,0.18);
+
+  --shadow: rgba(24,24,27,0.08);
+  --shadow-soft: rgba(24,24,27,0.04);
+  --overlay: rgba(24,24,27,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(82,82,91,0.15);
+  --badge-bg: #f4f4f5;
+  --badge-text: #3f3f46;
+  --selection-bg: #f4f4f5;
+  --selection-text: #18181b;
+  --surface-hover: #f4f4f5;
+  --active-bg: #f4f4f5;
+  --active-border: #3f3f46;
+}
+
+[data-theme="dark-volcanic"] {
+  /* Surfaces */
+  --bg: #080303;
+  --fg: #1a0505;
+  --surface: #1a0505;
+  --surface2: #320907;
+  --surface3: #451108;
+
+  /* Texte */
+  --text: #fee2e2;
+  --text-secondary: #fca5a5;
+  --text-disabled: #b91c1c;
+
+  /* Accent */
+  --accent: #ef4444;
+  --accent-hover: #dc2626;
+  --accent2: #f97316;
+
+  /* Boutons */
+  --button: #ef4444;
+  --button-hover: #dc2626;
+  --button-text: #ffffff;
+  --button-secondary: #320907;
+  --button-sec-hover: #451108;
+  --button-secondary-text: #fee2e2;
+
+  /* Inputs */
+  --input-bg: #1a0505;
+  --input-border: #b91c1c;
+  --input-hover: #320907;
+  --input-focus: #ef4444;
+  --input-placeholder: #b91c1c;
+
+  /* Sidebar */
+  --sidebar-bg: #1a0505;
+  --sidebar-active: #ef4444;
+  --sidebar-hover: #320907;
+  --sidebar-text: #fca5a5;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #320907;
+  --table-row: #1a0505;
+  --table-row-alt: #080303;
+  --table-row-hover: #320907;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #ef4444;
+  --info-bg: #450a0a;
+
+  /* Divers */
+  --highlight: #320907;
+  --border: rgba(255,255,255,0.10);
+  --divider: #320907;
+  --icon: #fca5a5;
+  --icon-active: #ef4444;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(239,68,68,0.10);
+  --glass-border: rgba(255,120,100,0.20);
+  --glass-hover: rgba(239,68,68,0.08);
+  --gradient-start: #ef4444;
+  --gradient-end: #f97316;
+  --glow-color: rgba(239,68,68,0.40);
+  --logo-glow: rgba(239,68,68,0.60);
+  --card-bg: rgba(26,0,0,0.85);
+  --card-hover: #320907;
+  --card-border: rgba(255,120,100,0.20);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #b91c1c;
+  --scroll-thumb-hover: #fca5a5;
+  --focus-ring: rgba(239,68,68,0.40);
+  --badge-bg: #450a0a;
+  --badge-text: #ef4444;
+  --selection-bg: #450a0a;
+  --selection-text: #fee2e2;
+  --surface-hover: #320907;
+  --active-bg: #450a0a;
+  --active-border: #ef4444;
+}
+
+[data-theme="light-volcanic"] {
+  /* Surfaces */
+  --bg: #fffafa;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #fff2ef;
+  --surface3: #fbe3dc;
+
+  /* Texte */
+  --text: #450a0a;
+  --text-secondary: #991b1b;
+  --text-disabled: #fca5a5;
+
+  /* Accent */
+  --accent: #b91c1c;
+  --accent-hover: #991b1b;
+  --accent2: #ef4444;
+
+  /* Boutons */
+  --button: #b91c1c;
+  --button-hover: #991b1b;
+  --button-text: #ffffff;
+  --button-secondary: #fff2ef;
+  --button-sec-hover: #fbe3dc;
+  --button-secondary-text: #450a0a;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #fff2ef;
+  --input-focus: #b91c1c;
+  --input-placeholder: #fca5a5;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #b91c1c;
+  --sidebar-hover: #fff2ef;
+  --sidebar-text: #991b1b;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #fff2ef;
+  --table-row: #ffffff;
+  --table-row-alt: #fffafa;
+  --table-row-hover: #fff2ef;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #b91c1c;
+  --info-bg: #fef2f2;
+
+  /* Divers */
+  --highlight: #fff2ef;
+  --border: rgba(15,23,42,0.10);
+  --divider: #fff2ef;
+  --icon: #991b1b;
+  --icon-active: #b91c1c;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(239,68,68,0.08);
+  --glass-border: rgba(239,68,68,0.25);
+  --glass-hover: rgba(239,68,68,0.12);
+  --gradient-start: #ef4444;
+  --gradient-end: #f97316;
+  --glow-color: rgba(239,68,68,0.20);
+  --logo-glow: rgba(239,68,68,0.35);
+  --card-bg: rgba(255,245,245,0.90);
+  --card-hover: #fff2ef;
+  --card-border: rgba(239,68,68,0.25);
+
+  --shadow: rgba(69,10,10,0.08);
+  --shadow-soft: rgba(69,10,10,0.04);
+  --overlay: rgba(69,10,10,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(239,68,68,0.20);
+  --badge-bg: #fef2f2;
+  --badge-text: #b91c1c;
+  --selection-bg: #fef2f2;
+  --selection-text: #450a0a;
+  --surface-hover: #fff2ef;
+  --active-bg: #fef2f2;
+  --active-border: #b91c1c;
+}
+
+[data-theme="dark-oceanic"] {
+  /* Surfaces */
+  --bg: #020b14;
+  --fg: #041c2b;
+  --surface: #041c2b;
+  --surface2: #063b52;
+  --surface3: #07556f;
+
+  /* Texte */
+  --text: #cffafe;
+  --text-secondary: #67e8f9;
+  --text-disabled: #0e7490;
+
+  /* Accent */
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --accent2: #22d3ee;
+
+  /* Boutons */
+  --button: #0891b2;
+  --button-hover: #0e7490;
+  --button-text: #ffffff;
+  --button-secondary: #063b52;
+  --button-sec-hover: #07556f;
+  --button-secondary-text: #cffafe;
+
+  /* Inputs */
+  --input-bg: #041c2b;
+  --input-border: #0e7490;
+  --input-hover: #063b52;
+  --input-focus: #0891b2;
+  --input-placeholder: #0e7490;
+
+  /* Sidebar */
+  --sidebar-bg: #041c2b;
+  --sidebar-active: #0891b2;
+  --sidebar-hover: #063b52;
+  --sidebar-text: #67e8f9;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #063b52;
+  --table-row: #041c2b;
+  --table-row-alt: #020b14;
+  --table-row-hover: #063b52;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #22d3ee;
+  --info-bg: #083344;
+
+  /* Divers */
+  --highlight: #063b52;
+  --border: rgba(255,255,255,0.10);
+  --divider: #063b52;
+  --icon: #67e8f9;
+  --icon-active: #0891b2;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(14,165,233,0.10);
+  --glass-border: rgba(56,189,248,0.20);
+  --glass-hover: rgba(14,165,233,0.08);
+  --gradient-start: #0ea5e9;
+  --gradient-end: #38bdf8;
+  --glow-color: rgba(14,165,233,0.40);
+  --logo-glow: rgba(14,165,233,0.60);
+  --card-bg: rgba(2,13,26,0.85);
+  --card-hover: #063b52;
+  --card-border: rgba(56,189,248,0.20);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #0e7490;
+  --scroll-thumb-hover: #67e8f9;
+  --focus-ring: rgba(14,165,233,0.40);
+  --badge-bg: #083344;
+  --badge-text: #0891b2;
+  --selection-bg: #083344;
+  --selection-text: #cffafe;
+  --surface-hover: #063b52;
+  --active-bg: #083344;
+  --active-border: #0891b2;
+}
+
+[data-theme="light-oceanic"] {
+  /* Surfaces */
+  --bg: #f3fbfd;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #e1f5f8;
+  --surface3: #c8eaf0;
+
+  /* Texte */
+  --text: #083344;
+  --text-secondary: #0e7490;
+  --text-disabled: #67e8f9;
+
+  /* Accent */
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --accent2: #0ea5e9;
+
+  /* Boutons */
+  --button: #0891b2;
+  --button-hover: #0e7490;
+  --button-text: #ffffff;
+  --button-secondary: #e1f5f8;
+  --button-sec-hover: #c8eaf0;
+  --button-secondary-text: #083344;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #e1f5f8;
+  --input-focus: #0891b2;
+  --input-placeholder: #67e8f9;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #0891b2;
+  --sidebar-hover: #e1f5f8;
+  --sidebar-text: #0e7490;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #e1f5f8;
+  --table-row: #ffffff;
+  --table-row-alt: #f3fbfd;
+  --table-row-hover: #e1f5f8;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #0891b2;
+  --info-bg: #ecfeff;
+
+  /* Divers */
+  --highlight: #e1f5f8;
+  --border: rgba(15,23,42,0.10);
+  --divider: #e1f5f8;
+  --icon: #0e7490;
+  --icon-active: #0891b2;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(14,165,233,0.08);
+  --glass-border: rgba(14,165,233,0.25);
+  --glass-hover: rgba(14,165,233,0.12);
+  --gradient-start: #0ea5e9;
+  --gradient-end: #38bdf8;
+  --glow-color: rgba(14,165,233,0.20);
+  --logo-glow: rgba(14,165,233,0.35);
+  --card-bg: rgba(240,249,255,0.90);
+  --card-hover: #e1f5f8;
+  --card-border: rgba(14,165,233,0.25);
+
+  --shadow: rgba(8,51,68,0.08);
+  --shadow-soft: rgba(8,51,68,0.04);
+  --overlay: rgba(8,51,68,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(14,165,233,0.20);
+  --badge-bg: #ecfeff;
+  --badge-text: #0891b2;
+  --selection-bg: #ecfeff;
+  --selection-text: #083344;
+  --surface-hover: #e1f5f8;
+  --active-bg: #ecfeff;
+  --active-border: #0891b2;
+}
+
+[data-theme="dark-modern"] {
+  /* Surfaces */
+  --bg: #010409;
+  --fg: #0b1017;
+  --surface: #0b1017;
+  --surface2: #111923;
+  --surface3: #17212c;
+
+  /* Texte */
+  --text: #e0f2fe;
+  --text-secondary: #7dd3fc;
+  --text-disabled: #0369a1;
+
+  /* Accent */
+  --accent: #22d3ee;
+  --accent-hover: #06b6d4;
+  --accent2: #3b82f6;
+
+  /* Boutons */
+  --button: #22d3ee;
+  --button-hover: #06b6d4;
+  --button-text: #ffffff;
+  --button-secondary: #111923;
+  --button-sec-hover: #17212c;
+  --button-secondary-text: #e0f2fe;
+
+  /* Inputs */
+  --input-bg: #0b1017;
+  --input-border: #0369a1;
+  --input-hover: #111923;
+  --input-focus: #22d3ee;
+  --input-placeholder: #0369a1;
+
+  /* Sidebar */
+  --sidebar-bg: #0b1017;
+  --sidebar-active: #22d3ee;
+  --sidebar-hover: #111923;
+  --sidebar-text: #7dd3fc;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255,255,255,0.10);
+
+  /* Table */
+  --table-header: #111923;
+  --table-row: #0b1017;
+  --table-row-alt: #010409;
+  --table-row-hover: #111923;
+  --table-border: rgba(255,255,255,0.10);
+
+  /* États */
+  --success: #4ade80;
+  --success-bg: #14532d;
+  --warning: #facc15;
+  --warning-bg: #451a03;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --info: #22d3ee;
+  --info-bg: #0c4a6e;
+
+  /* Divers */
+  --highlight: #111923;
+  --border: rgba(255,255,255,0.10);
+  --divider: #111923;
+  --icon: #7dd3fc;
+  --icon-active: #22d3ee;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(59,130,246,0.08);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-hover: rgba(59,130,246,0.06);
+  --gradient-start: #3b82f6;
+  --gradient-end: #6366f1;
+  --glow-color: rgba(59,130,246,0.35);
+  --logo-glow: rgba(59,130,246,0.55);
+  --card-bg: rgba(1,4,9,0.90);
+  --card-hover: #111923;
+  --card-border: rgba(255,255,255,0.08);
+
+  --shadow: rgba(0,0,0,0.55);
+  --shadow-soft: rgba(0,0,0,0.25);
+  --overlay: rgba(0,0,0,0.65);
+  --scroll-thumb: #0369a1;
+  --scroll-thumb-hover: #7dd3fc;
+  --focus-ring: rgba(59,130,246,0.35);
+  --badge-bg: #0c4a6e;
+  --badge-text: #22d3ee;
+  --selection-bg: #0c4a6e;
+  --selection-text: #e0f2fe;
+  --surface-hover: #111923;
+  --active-bg: #0c4a6e;
+  --active-border: #22d3ee;
+}
+
+[data-theme="light-modern"] {
+  /* Surfaces */
+  --bg: #fbfdff;
+  --fg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f1f7fb;
+  --surface3: #e7f2f8;
+
+  /* Texte */
+  --text: #0c4a6e;
+  --text-secondary: #0369a1;
+  --text-disabled: #7dd3fc;
+
+  /* Accent */
+  --accent: #0369a1;
+  --accent-hover: #075985;
+  --accent2: #2563eb;
+
+  /* Boutons */
+  --button: #0369a1;
+  --button-hover: #075985;
+  --button-text: #ffffff;
+  --button-secondary: #f1f7fb;
+  --button-sec-hover: #e7f2f8;
+  --button-secondary-text: #0c4a6e;
+
+  /* Inputs */
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-hover: #f1f7fb;
+  --input-focus: #0369a1;
+  --input-placeholder: #7dd3fc;
+
+  /* Sidebar */
+  --sidebar-bg: #ffffff;
+  --sidebar-active: #0369a1;
+  --sidebar-hover: #f1f7fb;
+  --sidebar-text: #0369a1;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(15,23,42,0.10);
+
+  /* Table */
+  --table-header: #f1f7fb;
+  --table-row: #ffffff;
+  --table-row-alt: #fbfdff;
+  --table-row-hover: #f1f7fb;
+  --table-border: rgba(15,23,42,0.10);
+
+  /* États */
+  --success: #16a34a;
+  --success-bg: #ecfdf3;
+  --warning: #d97706;
+  --warning-bg: #fff7e6;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --info: #0369a1;
+  --info-bg: #f0f9ff;
+
+  /* Divers */
+  --highlight: #f1f7fb;
+  --border: rgba(15,23,42,0.10);
+  --divider: #f1f7fb;
+  --icon: #0369a1;
+  --icon-active: #0369a1;
+
+  /* Glass / effets (alignés ThemeBackground) */
+  --glass-bg: rgba(37,99,235,0.07);
+  --glass-border: rgba(37,99,235,0.20);
+  --glass-hover: rgba(37,99,235,0.10);
+  --gradient-start: #2563eb;
+  --gradient-end: #3b82f6;
+  --glow-color: rgba(37,99,235,0.15);
+  --logo-glow: rgba(37,99,235,0.30);
+  --card-bg: rgba(245,247,251,0.90);
+  --card-hover: #f1f7fb;
+  --card-border: rgba(37,99,235,0.20);
+
+  --shadow: rgba(12,74,110,0.08);
+  --shadow-soft: rgba(12,74,110,0.04);
+  --overlay: rgba(12,74,110,0.12);
+  --scroll-thumb: #cbd5e1;
+  --scroll-thumb-hover: #94a3b8;
+  --focus-ring: rgba(37,99,235,0.15);
+  --badge-bg: #f0f9ff;
+  --badge-text: #0369a1;
+  --selection-bg: #f0f9ff;
+  --selection-text: #0c4a6e;
+  --surface-hover: #f1f7fb;
+  --active-bg: #f0f9ff;
+  --active-border: #0369a1;
+}
+
+/* ============================================================
+   GLOBAL
+   ============================================================ */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: "DM Sans", "Syne", system-ui, sans-serif;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Utilitaires */
+.bg-surface  { background-color: var(--surface); }
+.bg-surface2 { background-color: var(--surface2); }
+.bg-accent   { background-color: var(--accent); color: var(--button-text); }
+
+.text-primary   { color: var(--text); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted     { color: var(--text-disabled); }
+.text-accent    { color: var(--accent); }
+
+.border        { border: 1px solid var(--border); }
+.border-accent { border: 1px solid var(--accent); }
+
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger  { color: var(--danger); }
+.text-info    { color: var(--info); }
+
+.bg-success { background-color: var(--success-bg); color: var(--success); }
+.bg-warning { background-color: var(--warning-bg); color: var(--warning); }
+.bg-danger  { background-color: var(--danger-bg);  color: var(--danger); }
+.bg-info    { background-color: var(--info-bg);    color: var(--info); }
+
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  color: var(--button-text);
+  border: none;
+  box-shadow: 0 8px 24px var(--glow-color);
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
