@@ -2,8 +2,8 @@ import axios from "axios";
 import { data } from "react-router-dom";
 // import { data } from "react-router-dom";
 
-const API_URL = "http://localhost:8001";
-// const API_URL = "https://stockflow-7q5a.onrender.com";
+// const API_URL = "http://localhost:8001";
+const API_URL = "https://stockflow-7q5a.onrender.com";
 
 
 // Plus tard : "https://stockflow-api.railway.app"
