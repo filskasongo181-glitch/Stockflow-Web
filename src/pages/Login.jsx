@@ -335,8 +335,9 @@ function Login({ setIsAuth }) {
   const isLight = currentTheme.startsWith("light");
   // Fonds light désormais saturés → texte clair partout pour le contraste
   const onColorBg = true;
-  const textColor = "#f8fafc";
-  const muted = "rgba(248,250,252,0.72)";
+  const textColor = isLight ? "#0f172a" : "#f8fafc";
+  const muted = isLight ? "rgba(15,23,42,0.65)" : "rgba(248,250,252,0.72)";
+  const cardBg = isLight ? "rgba(255,255,255,0.78)" : "rgba(15,15,25,0.45)";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", currentTheme);
@@ -385,7 +386,8 @@ function Login({ setIsAuth }) {
           maxWidth: "calc(100% - 2rem)",
           marginTop: 60,
           borderRadius: 25,
-          background: "rgba(15, 15, 25, 0.45)",
+          // background: "rgba(15, 15, 25, 0.45)",
+          background: cardBg,
           backdropFilter: "blur(22px)",
           border: "1px solid rgba(255,255,255,0.18)",
           boxShadow:

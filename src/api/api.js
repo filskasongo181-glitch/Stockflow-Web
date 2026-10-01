@@ -1,4 +1,5 @@
 import axios from "axios";
+import { data } from "react-router-dom";
 // import { data } from "react-router-dom";
 
 // const API_URL = "http://localhost:8001";
@@ -224,6 +225,15 @@ export const getStocksByItem = (itemId) =>
 export const getStockExact = (itemId, entrepotId) =>
   api.get(`/stocks/item/${itemId}/entrepot/${entrepotId}`);
 
+export const createLog = (data) =>
+  api.post("/logs/", data);
 
+export const getLogs = () =>
+  api.get("/logs/");
 
+export const getLogsByUser = (userId) =>
+  api.get(`/logs/user/${userId}`);
+
+export const deleteLog = (logId) =>
+  api.delete(`/logs/${logId}`);
 export default api;

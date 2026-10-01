@@ -75,6 +75,8 @@ import Details from "./pages/Details";
 import Parametres from "./pages/Parametre";
 import Layout     from "./components/Layout";
 
+// import AuditLogs from "./pages/AuditLog";
+import { MessageProvider } from "./components/MessageBox";
 
 function App() {
   const [theme, setTheme] = useState(
@@ -89,7 +91,8 @@ function App() {
   }, [theme]);
   return (
     <BrowserRouter>
-      <Routes>
+      <MessageProvider>
+        <Routes>
         {/* Pages publiques */}
         <Route path="/"           element={<Accueil />} />
         <Route path="/login"      element={
@@ -114,9 +117,11 @@ function App() {
             </Layout>
           ) : (
             <Navigate to="/login" />
-          )
-        } />
-      </Routes>
+            )
+          } />
+        </Routes>
+      </MessageProvider>
+      
     </BrowserRouter>
   );
 }
