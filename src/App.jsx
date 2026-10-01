@@ -72,6 +72,7 @@ import Mouvements from "./pages/Mouvements";
 import Statistiques from "./pages/Statistiques";
 import UsersPage  from "./pages/Utilisateurs";
 import Details from "./pages/Details";
+import Detailscarousel from "./pages/DetailsCarousel";
 import Parametres from "./pages/Parametre";
 import Layout     from "./components/Layout";
 
@@ -112,6 +113,7 @@ function App() {
                 <Route path="/users"  element={<UsersPage />} />
                 <Route path="/parametres"  element={<Parametres />} />
                 <Route path="/statistiques"  element={<Statistiques />} />
+                <Route path="/details/:type/all"  element={<Detailscarousel />} />
                 <Route path="/details/:type/:id"  element={<Details />} />
               </Routes>
             </Layout>
