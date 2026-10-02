@@ -227,10 +227,6 @@ export const getStockExact = (itemId, entrepotId) =>
 export const createLog = (data) =>
   api.post("/logs/", data);
 
-export const getAuditLogs = () => api.get("/logs");
-
-export const getLogs = () =>
-  api.get("/logs/");
 
 export const getLogsByUser = (userId) =>
   api.get(`/logs/user/${userId}`);
@@ -239,12 +235,22 @@ export const deleteLog = (logId) =>
   api.delete(`/logs/${logId}`);
 
 
+/* ============================================================
+   À AJOUTER dans src/api/api.js  (exports obligatoires)
+   Adapte "client" au nom de ton instance axios / fetch wrapper
+   Exemples courants : api, http, axiosInstance, client
+============================================================ */
 
-// Archives — NOUVEAU
+// --- Audit logs (prefix API = /logs) ---
+export const getAuditLogs = () => api.get("/logs");
+
+// --- Mouvements archives (prefix API = /mouvements) ---
 export const getMouvementsArchives = () => api.get("/mouvements/archived");
-// alias éventuels utilisés par ArchivesMouvements.jsx
-export const getArchived = getMouvementsArchives;
-export const getMouvementsArchived = getMouvementsArchives;
+
+// (déjà présents normalement)
+// export const getItems = () => api.get("/items");
+// export const getEntrepots = () => api.get("/entrepots");
+// export const getMouvementsRecents = () => api.get("/mouvements/recents");
 
 
 
