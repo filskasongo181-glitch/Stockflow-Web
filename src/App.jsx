@@ -74,6 +74,8 @@ import UsersPage  from "./pages/Utilisateurs";
 import Details from "./pages/Details";
 import Detailscarousel from "./pages/DetailsCarousel";
 import Parametres from "./pages/Parametre";
+import ArchivesMouvements from "./pages/ArchivesMouvements";
+import AuditLogs from "./pages/AuditLog";
 import Layout     from "./components/Layout";
 
 // import AuditLogs from "./pages/AuditLog";
