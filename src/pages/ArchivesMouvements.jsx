@@ -731,7 +731,7 @@
  * ArchivesMouvements — Mouvements archivés
  * Style EXACT Mouvements (header, InfoCards, DateCards, thèmes dynamiques)
  * Lecture seule + Visualiser + Détails + Détail All + Retour
- * API : getMouvementsArchives / getMouvementsArchives / GET /mouvements/archived
+ * API : getMouvementsArchives / getArchived / GET /mouvements/archived
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -1188,10 +1188,10 @@ export default function ArchivesMouvements() {
   const charger = async () => {
     setLoading(true);
     try {
-      // Priorité : getMouvementsArchives → getMouvementsArchives → fallback sync très ancien
+      // Priorité : getMouvementsArchives → getArchived → fallback sync très ancien
       let archFn =
         api.getMouvementsArchives ||
-        api.getMouvementsArchives ||
+        api.getArchived ||
         api.getMouvementsArchived ||
         null;
 
