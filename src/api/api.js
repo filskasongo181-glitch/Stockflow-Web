@@ -109,6 +109,8 @@ export const getMouvementsRecents = async () => {
 // export const getMouvementsArchives = () => api.get("/mouvements/archives");
 export const getMouvementsArchives = () => api.get("/mouvements/archived");
 
+export const getMouvementsArchived = () => api.get("/mouvements/archived");
+
 
 
 // export const getMouvementsArchived = () =>
