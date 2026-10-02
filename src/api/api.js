@@ -106,14 +106,6 @@ export const getMouvementsRecents = async () => {
   }
 };
 
-// export const getMouvementsArchives = () => api.get("/mouvements/archives");
-export const getMouvementsArchives = () => api.get("/mouvements/archived");
-
-
-export const getArchived = () =>
-  api.get("/mouvements/archived");
-
-
 // export const getStockAjustments = () => api.get("/mouvements/ajustements/");
 export const getUsers      = () => api.get("/users/");
 
@@ -235,8 +227,7 @@ export const getStockExact = (itemId, entrepotId) =>
 export const createLog = (data) =>
   api.post("/logs/", data);
 
-export const getAuditLogs = () =>
-  api.get("/logs/");
+export const getAuditLogs = () => api.get("/logs");
 
 export const getLogs = () =>
   api.get("/logs/");
@@ -246,6 +237,14 @@ export const getLogsByUser = (userId) =>
 
 export const deleteLog = (logId) =>
   api.delete(`/logs/${logId}`);
+
+
+
+// Archives — NOUVEAU
+export const getMouvementsArchives = () => api.get("/mouvements/archived");
+// alias éventuels utilisés par ArchivesMouvements.jsx
+export const getArchived = getMouvementsArchives;
+export const getMouvementsArchived = getMouvementsArchives;
 
 
 
