@@ -108,6 +108,11 @@ export const getMouvementsRecents = async () => {
 
 // export const getMouvementsArchives = () => api.get("/mouvements/archives");
 export const getMouvementsArchives = () => api.get("/mouvements/archived");
+
+export const getArchived = () =>
+  api.get("/mouvements/archived");
+
+
 // export const getStockAjustments = () => api.get("/mouvements/ajustements/");
 export const getUsers      = () => api.get("/users/");
 
