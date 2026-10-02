@@ -228,6 +228,9 @@ export const getStockExact = (itemId, entrepotId) =>
 export const createLog = (data) =>
   api.post("/logs/", data);
 
+export const getAuditLogs = () =>
+  api.get("/logs/");
+
 export const getLogs = () =>
   api.get("/logs/");
 
