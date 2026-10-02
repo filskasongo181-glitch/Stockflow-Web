@@ -117,6 +117,8 @@ function App() {
                 <Route path="/statistiques"  element={<Statistiques />} />
                 <Route path="/details/:type/all"  element={<Detailscarousel />} />
                 <Route path="/details/:type/:id"  element={<Details />} />
+                <Route path="/archives-mouvements"  element={<ArchivesMouvements />} />
+                <Route path="/audit-logs"  element={<AuditLogs />} />
               </Routes>
             </Layout>
           ) : (
