@@ -115,10 +115,10 @@ function App() {
                 <Route path="/users"  element={<UsersPage />} />
                 <Route path="/parametres"  element={<Parametres />} />
                 <Route path="/statistiques"  element={<Statistiques />} />
-                <Route path="/details/:type/all"  element={<Detailscarousel />} />
-                <Route path="/details/:type/:id"  element={<Details />} />
-                <Route path="/archives-mouvements"  element={<ArchivesMouvements />} />
                 <Route path="/audit-logs"  element={<AuditLogs />} />
+                <Route path="/archives-mouvements"  element={<ArchivesMouvements />} />
+                <Route path="/details/:type/:id"  element={<Details />} />
+                <Route path="/details-carousel/:type/all"  element={<Detailscarousel />} />
               </Routes>
             </Layout>
           ) : (
