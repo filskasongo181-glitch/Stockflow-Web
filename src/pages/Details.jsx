@@ -12032,3 +12032,7 @@ const tdStyle = {
 export default Details;
 export { calculerStockTotal, stockReelEntrepot, convertirQuantite };
 
+
+
+
+
