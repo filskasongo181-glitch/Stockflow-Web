@@ -1,94 +1,666 @@
+// // // // // // // // // // // // // // // // /**
+// // // // // // // // // // // // // // // //  * DetailsCarousel — "Detail All"
+// // // // // // // // // // // // // // // //  * Route : /details/:type/all
+// // // // // // // // // // // // // // // //  *
+// // // // // // // // // // // // // // // //  * Affiche les fiches une par une avec flèches précédent / suivant.
+// // // // // // // // // // // // // // // //  * Fluide même avec des centaines d'éléments (pas de PDF massif d'un coup).
+// // // // // // // // // // // // // // // //  */
+
+// // // // // // // // // // // // // // // // import { useEffect, useMemo, useState, useCallback } from "react";
+// // // // // // // // // // // // // // // // import { useNavigate, useParams } from "react-router-dom";
+// // // // // // // // // // // // // // // // import {
+// // // // // // // // // // // // // // // //   ArrowLeft,
+// // // // // // // // // // // // // // // //   ChevronUp,
+// // // // // // // // // // // // // // // //   ChevronDown,
+// // // // // // // // // // // // // // // //   Tag,
+// // // // // // // // // // // // // // // //   Package,
+// // // // // // // // // // // // // // // //   Warehouse,
+// // // // // // // // // // // // // // // //   Users,
+// // // // // // // // // // // // // // // //   ArrowLeftRight,
+// // // // // // // // // // // // // // // //   Layers,
+// // // // // // // // // // // // // // // //   ExternalLink,
+// // // // // // // // // // // // // // // // } from "lucide-react";
+// // // // // // // // // // // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
+// // // // // // // // // // // // // // // // import Footer from "../components/Footer";
+// // // // // // // // // // // // // // // // import * as api from "../api/api";
+
+// // // // // // // // // // // // // // // // const safeGet = (fn) =>
+// // // // // // // // // // // // // // // //   typeof fn === "function"
+// // // // // // // // // // // // // // // //     ? fn().catch(() => ({ data: [] }))
+// // // // // // // // // // // // // // // //     : Promise.resolve({ data: [] });
+
+// // // // // // // // // // // // // // // // const META = {
+// // // // // // // // // // // // // // // //   categorie: { label: "Catégorie", icon: Tag, list: "getCategories", name: (r) => r.name },
+// // // // // // // // // // // // // // // //   article: {
+// // // // // // // // // // // // // // // //     label: "Article",
+// // // // // // // // // // // // // // // //     icon: Package,
+// // // // // // // // // // // // // // // //     list: "getItems",
+// // // // // // // // // // // // // // // //     name: (r) => [r.name, r.mark, r.modele].filter(Boolean).join(" · "),
+// // // // // // // // // // // // // // // //   },
+// // // // // // // // // // // // // // // //   entrepot: {
+// // // // // // // // // // // // // // // //     label: "Entrepôt",
+// // // // // // // // // // // // // // // //     icon: Warehouse,
+// // // // // // // // // // // // // // // //     list: "getEntrepots",
+// // // // // // // // // // // // // // // //     name: (r) => r.reference || r.name || `#${r.id}`,
+// // // // // // // // // // // // // // // //   },
+// // // // // // // // // // // // // // // //   utilisateur: {
+// // // // // // // // // // // // // // // //     label: "Utilisateur",
+// // // // // // // // // // // // // // // //     icon: Users,
+// // // // // // // // // // // // // // // //     list: "getUsers",
+// // // // // // // // // // // // // // // //     name: (r) => `${r.first_name || ""} ${r.name || ""}`.trim() || r.email,
+// // // // // // // // // // // // // // // //   },
+// // // // // // // // // // // // // // // //   mouvement: {
+// // // // // // // // // // // // // // // //     label: "Mouvement",
+// // // // // // // // // // // // // // // //     icon: ArrowLeftRight,
+// // // // // // // // // // // // // // // //     list: "getMouvementsRecents",
+// // // // // // // // // // // // // // // //     name: (r) => `${r.type || "Mvt"} · ${String(r.date || "").slice(0, 10)} · qty ${r.qty ?? "—"}`,
+// // // // // // // // // // // // // // // //   },
+// // // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // // export default function DetailsCarousel() {
+// // // // // // // // // // // // // // // //   const { type } = useParams();
+// // // // // // // // // // // // // // // //   const navigate = useNavigate();
+// // // // // // // // // // // // // // // //   const theme =
+// // // // // // // // // // // // // // // //     (typeof sessionStorage !== "undefined" && sessionStorage.getItem("theme")) ||
+// // // // // // // // // // // // // // // //     "dark-galaxy";
+
+// // // // // // // // // // // // // // // //   const meta = META[type] || META.categorie;
+// // // // // // // // // // // // // // // //   const Icon = meta.icon;
+
+// // // // // // // // // // // // // // // //   const [items, setItems] = useState([]);
+// // // // // // // // // // // // // // // //   const [index, setIndex] = useState(0);
+// // // // // // // // // // // // // // // //   const [loading, setLoading] = useState(true);
+
+// // // // // // // // // // // // // // // //   useEffect(() => {
+// // // // // // // // // // // // // // // //     let cancelled = false;
+// // // // // // // // // // // // // // // //     (async () => {
+// // // // // // // // // // // // // // // //       setLoading(true);
+// // // // // // // // // // // // // // // //       try {
+// // // // // // // // // // // // // // // //         const fn = api[meta.list];
+// // // // // // // // // // // // // // // //         const res = await safeGet(fn);
+// // // // // // // // // // // // // // // //         const raw = res?.data ?? res ?? [];
+// // // // // // // // // // // // // // // //         const list = (Array.isArray(raw) ? raw : []).filter(
+// // // // // // // // // // // // // // // //           (x) => Number(x.deleted ?? 0) === 0
+// // // // // // // // // // // // // // // //         );
+// // // // // // // // // // // // // // // //         list.sort((a, b) =>
+// // // // // // // // // // // // // // // //           String(meta.name(a) || "").localeCompare(String(meta.name(b) || ""), "fr")
+// // // // // // // // // // // // // // // //         );
+// // // // // // // // // // // // // // // //         if (!cancelled) {
+// // // // // // // // // // // // // // // //           setItems(list);
+// // // // // // // // // // // // // // // //           setIndex(0);
+// // // // // // // // // // // // // // // //         }
+// // // // // // // // // // // // // // // //       } finally {
+// // // // // // // // // // // // // // // //         if (!cancelled) setLoading(false);
+// // // // // // // // // // // // // // // //       }
+// // // // // // // // // // // // // // // //     })();
+// // // // // // // // // // // // // // // //     return () => {
+// // // // // // // // // // // // // // // //       cancelled = true;
+// // // // // // // // // // // // // // // //     };
+// // // // // // // // // // // // // // // //   }, [type, meta.list]);
+
+// // // // // // // // // // // // // // // //   const current = items[index] || null;
+
+// // // // // // // // // // // // // // // //   const prev = useCallback(() => {
+// // // // // // // // // // // // // // // //     setIndex((i) => (i <= 0 ? Math.max(items.length - 1, 0) : i - 1));
+// // // // // // // // // // // // // // // //   }, [items.length]);
+
+// // // // // // // // // // // // // // // //   const next = useCallback(() => {
+// // // // // // // // // // // // // // // //     setIndex((i) => (i >= items.length - 1 ? 0 : i + 1));
+// // // // // // // // // // // // // // // //   }, [items.length]);
+
+// // // // // // // // // // // // // // // //   useEffect(() => {
+// // // // // // // // // // // // // // // //     const onKey = (e) => {
+// // // // // // // // // // // // // // // //       if (e.key === "ArrowUp" || e.key === "ArrowLeft") prev();
+// // // // // // // // // // // // // // // //       if (e.key === "ArrowDown" || e.key === "ArrowRight") next();
+// // // // // // // // // // // // // // // //     };
+// // // // // // // // // // // // // // // //     window.addEventListener("keydown", onKey);
+// // // // // // // // // // // // // // // //     return () => window.removeEventListener("keydown", onKey);
+// // // // // // // // // // // // // // // //   }, [prev, next]);
+
+// // // // // // // // // // // // // // // //   const fields = useMemo(() => {
+// // // // // // // // // // // // // // // //     if (!current) return [];
+// // // // // // // // // // // // // // // //     const skip = new Set(["icon", "picture", "picture_path", "password", "hash"]);
+// // // // // // // // // // // // // // // //     return Object.entries(current)
+// // // // // // // // // // // // // // // //       .filter(([k, v]) => !skip.has(k) && v != null && String(v).length < 500)
+// // // // // // // // // // // // // // // //       .slice(0, 24);
+// // // // // // // // // // // // // // // //   }, [current]);
+
+// // // // // // // // // // // // // // // //   const css = themeCssVars?.(theme) || {};
+
+// // // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // // //     <div style={{ minHeight: "100vh", position: "relative", ...css }}>
+// // // // // // // // // // // // // // // //       <ThemeBackground theme={theme} />
+// // // // // // // // // // // // // // // //       <div
+// // // // // // // // // // // // // // // //         style={{
+// // // // // // // // // // // // // // // //           position: "relative",
+// // // // // // // // // // // // // // // //           zIndex: 1,
+// // // // // // // // // // // // // // // //           maxWidth: 720,
+// // // // // // // // // // // // // // // //           margin: "0 auto",
+// // // // // // // // // // // // // // // //           padding: "1.25rem 1rem 3rem",
+// // // // // // // // // // // // // // // //         }}
+// // // // // // // // // // // // // // // //       >
+// // // // // // // // // // // // // // // //         <button type="button" onClick={() => navigate(-1)} style={btnBack}>
+// // // // // // // // // // // // // // // //           <ArrowLeft size={16} /> Retour
+// // // // // // // // // // // // // // // //         </button>
+
+// // // // // // // // // // // // // // // //         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 1.25rem" }}>
+// // // // // // // // // // // // // // // //           <div style={iconBox}>
+// // // // // // // // // // // // // // // //             <Layers size={22} color="#fff" />
+// // // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // // //           <div>
+// // // // // // // // // // // // // // // //             <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase" }}>
+// // // // // // // // // // // // // // // //               Detail All · {meta.label}
+// // // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // // //             <h1 style={{ margin: 0, fontSize: "1.35rem", color: "var(--text)" }}>
+// // // // // // // // // // // // // // // //               {loading ? "Chargement…" : `${items.length} élément(s)`}
+// // // // // // // // // // // // // // // //             </h1>
+// // // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // // //         </div>
+
+// // // // // // // // // // // // // // // //         {/* Flèche haut */}
+// // // // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+// // // // // // // // // // // // // // // //           <button type="button" onClick={prev} disabled={!items.length} style={arrowBtn} title="Précédent (↑)">
+// // // // // // // // // // // // // // // //             <ChevronUp size={28} />
+// // // // // // // // // // // // // // // //           </button>
+// // // // // // // // // // // // // // // //         </div>
+
+// // // // // // // // // // // // // // // //         {/* Cadre central */}
+// // // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // // //             borderRadius: 20,
+// // // // // // // // // // // // // // // //             border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // // //             background: "var(--glass-bg)",
+// // // // // // // // // // // // // // // //             backdropFilter: "blur(14px)",
+// // // // // // // // // // // // // // // //             padding: "1.25rem 1.35rem",
+// // // // // // // // // // // // // // // //             minHeight: 280,
+// // // // // // // // // // // // // // // //             boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
+// // // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // // //           {loading ? (
+// // // // // // // // // // // // // // // //             <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>Chargement…</p>
+// // // // // // // // // // // // // // // //           ) : !current ? (
+// // // // // // // // // // // // // // // //             <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>Aucun élément.</p>
+// // // // // // // // // // // // // // // //           ) : (
+// // // // // // // // // // // // // // // //             <>
+// // // // // // // // // // // // // // // //               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
+// // // // // // // // // // // // // // // //                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+// // // // // // // // // // // // // // // //                   <Icon size={22} style={{ color: "var(--gradient-start)" }} />
+// // // // // // // // // // // // // // // //                   <div>
+// // // // // // // // // // // // // // // //                     <div style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--text)" }}>
+// // // // // // // // // // // // // // // //                       {meta.name(current)}
+// // // // // // // // // // // // // // // //                     </div>
+// // // // // // // // // // // // // // // //                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+// // // // // // // // // // // // // // // //                       {index + 1} / {items.length} · ID {current.id}
+// // // // // // // // // // // // // // // //                     </div>
+// // // // // // // // // // // // // // // //                   </div>
+// // // // // // // // // // // // // // // //                 </div>
+// // // // // // // // // // // // // // // //                 <button
+// // // // // // // // // // // // // // // //                   type="button"
+// // // // // // // // // // // // // // // //                   onClick={() => navigate(`/details/${type}/${current.id}`)}
+// // // // // // // // // // // // // // // //                   style={btnGhost}
+// // // // // // // // // // // // // // // //                 >
+// // // // // // // // // // // // // // // //                   <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // // // // //                 </button>
+// // // // // // // // // // // // // // // //               </div>
+
+// // // // // // // // // // // // // // // //               <div
+// // // // // // // // // // // // // // // //                 style={{
+// // // // // // // // // // // // // // // //                   display: "grid",
+// // // // // // // // // // // // // // // //                   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+// // // // // // // // // // // // // // // //                   gap: "0.65rem 1rem",
+// // // // // // // // // // // // // // // //                 }}
+// // // // // // // // // // // // // // // //               >
+// // // // // // // // // // // // // // // //                 {fields.map(([k, v]) => (
+// // // // // // // // // // // // // // // //                   <div
+// // // // // // // // // // // // // // // //                     key={k}
+// // // // // // // // // // // // // // // //                     style={{
+// // // // // // // // // // // // // // // //                       padding: "0.55rem 0.7rem",
+// // // // // // // // // // // // // // // //                       borderRadius: 12,
+// // // // // // // // // // // // // // // //                       border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // // //                       background: "rgba(255,255,255,0.03)",
+// // // // // // // // // // // // // // // //                     }}
+// // // // // // // // // // // // // // // //                   >
+// // // // // // // // // // // // // // // //                     <div
+// // // // // // // // // // // // // // // //                       style={{
+// // // // // // // // // // // // // // // //                         fontSize: "0.68rem",
+// // // // // // // // // // // // // // // //                         fontWeight: 700,
+// // // // // // // // // // // // // // // //                         textTransform: "uppercase",
+// // // // // // // // // // // // // // // //                         letterSpacing: "0.04em",
+// // // // // // // // // // // // // // // //                         color: "var(--text-secondary)",
+// // // // // // // // // // // // // // // //                         marginBottom: 4,
+// // // // // // // // // // // // // // // //                       }}
+// // // // // // // // // // // // // // // //                     >
+// // // // // // // // // // // // // // // //                       {k}
+// // // // // // // // // // // // // // // //                     </div>
+// // // // // // // // // // // // // // // //                     <div style={{ color: "var(--text)", fontSize: "0.9rem", wordBreak: "break-word" }}>
+// // // // // // // // // // // // // // // //                       {typeof v === "object" ? JSON.stringify(v) : String(v)}
+// // // // // // // // // // // // // // // //                     </div>
+// // // // // // // // // // // // // // // //                   </div>
+// // // // // // // // // // // // // // // //                 ))}
+// // // // // // // // // // // // // // // //               </div>
+// // // // // // // // // // // // // // // //             </>
+// // // // // // // // // // // // // // // //           )}
+// // // // // // // // // // // // // // // //         </div>
+
+// // // // // // // // // // // // // // // //         {/* Flèche bas */}
+// // // // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+// // // // // // // // // // // // // // // //           <button type="button" onClick={next} disabled={!items.length} style={arrowBtn} title="Suivant (↓)">
+// // // // // // // // // // // // // // // //             <ChevronDown size={28} />
+// // // // // // // // // // // // // // // //           </button>
+// // // // // // // // // // // // // // // //         </div>
+
+// // // // // // // // // // // // // // // //         <p style={{ textAlign: "center", marginTop: 12, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+// // // // // // // // // // // // // // // //           Flèches clavier ↑ ↓ ou boutons pour naviguer
+// // // // // // // // // // // // // // // //         </p>
+// // // // // // // // // // // // // // // //       </div>
+// // // // // // // // // // // // // // // //       <Footer />
+// // // // // // // // // // // // // // // //     </div>
+// // // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // // const iconBox = {
+// // // // // // // // // // // // // // // //   width: 48,
+// // // // // // // // // // // // // // // //   height: 48,
+// // // // // // // // // // // // // // // //   borderRadius: 14,
+// // // // // // // // // // // // // // // //   display: "grid",
+// // // // // // // // // // // // // // // //   placeItems: "center",
+// // // // // // // // // // // // // // // //   background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // // // // //   boxShadow: "0 8px 24px var(--glow-color)",
+// // // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // // const btnBack = {
+// // // // // // // // // // // // // // // //   display: "inline-flex",
+// // // // // // // // // // // // // // // //   alignItems: "center",
+// // // // // // // // // // // // // // // //   gap: 8,
+// // // // // // // // // // // // // // // //   padding: "0.45rem 0.85rem",
+// // // // // // // // // // // // // // // //   borderRadius: 12,
+// // // // // // // // // // // // // // // //   border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // // //   background: "var(--glass-bg)",
+// // // // // // // // // // // // // // // //   color: "var(--text)",
+// // // // // // // // // // // // // // // //   cursor: "pointer",
+// // // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // // const arrowBtn = {
+// // // // // // // // // // // // // // // //   width: 52,
+// // // // // // // // // // // // // // // //   height: 52,
+// // // // // // // // // // // // // // // //   borderRadius: 16,
+// // // // // // // // // // // // // // // //   border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // // //   background: "var(--glass-bg)",
+// // // // // // // // // // // // // // // //   color: "var(--text)",
+// // // // // // // // // // // // // // // //   cursor: "pointer",
+// // // // // // // // // // // // // // // //   display: "grid",
+// // // // // // // // // // // // // // // //   placeItems: "center",
+// // // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // // const btnGhost = {
+// // // // // // // // // // // // // // // //   display: "inline-flex",
+// // // // // // // // // // // // // // // //   alignItems: "center",
+// // // // // // // // // // // // // // // //   gap: 6,
+// // // // // // // // // // // // // // // //   padding: "0.4rem 0.75rem",
+// // // // // // // // // // // // // // // //   borderRadius: 10,
+// // // // // // // // // // // // // // // //   border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // // //   background: "transparent",
+// // // // // // // // // // // // // // // //   color: "var(--text)",
+// // // // // // // // // // // // // // // //   fontSize: "0.8rem",
+// // // // // // // // // // // // // // // //   fontWeight: 600,
+// // // // // // // // // // // // // // // //   cursor: "pointer",
+// // // // // // // // // // // // // // // // };
+
+
 // // // // // // // // // // // // // // // /**
-// // // // // // // // // // // // // // //  * DetailsCarousel — "Detail All"
+// // // // // // // // // // // // // // //  * DetailsCarousel — Detail All
 // // // // // // // // // // // // // // //  * Route : /details/:type/all
 // // // // // // // // // // // // // // //  *
-// // // // // // // // // // // // // // //  * Affiche les fiches une par une avec flèches précédent / suivant.
-// // // // // // // // // // // // // // //  * Fluide même avec des centaines d'éléments (pas de PDF massif d'un coup).
+// // // // // // // // // // // // // // //  * Même identité visuelle que Details.jsx :
+// // // // // // // // // // // // // // //  * ThemeBackground, GlassCard, badges, icônes image catégorie/article,
+// // // // // // // // // // // // // // //  * flèches ↑↓, fiche complète, export PDF simple de la fiche courante.
 // // // // // // // // // // // // // // //  */
 
-// // // // // // // // // // // // // // // import { useEffect, useMemo, useState, useCallback } from "react";
+// // // // // // // // // // // // // // // import { useEffect, useState, useCallback, useMemo } from "react";
 // // // // // // // // // // // // // // // import { useNavigate, useParams } from "react-router-dom";
 // // // // // // // // // // // // // // // import {
 // // // // // // // // // // // // // // //   ArrowLeft,
 // // // // // // // // // // // // // // //   ChevronUp,
 // // // // // // // // // // // // // // //   ChevronDown,
-// // // // // // // // // // // // // // //   Tag,
 // // // // // // // // // // // // // // //   Package,
+// // // // // // // // // // // // // // //   Tag,
 // // // // // // // // // // // // // // //   Warehouse,
 // // // // // // // // // // // // // // //   Users,
 // // // // // // // // // // // // // // //   ArrowLeftRight,
 // // // // // // // // // // // // // // //   Layers,
 // // // // // // // // // // // // // // //   ExternalLink,
+// // // // // // // // // // // // // // //   Download,
+// // // // // // // // // // // // // // //   Image as ImageIcon,
+// // // // // // // // // // // // // // //   Hash,
+// // // // // // // // // // // // // // //   Info,
+// // // // // // // // // // // // // // //   Boxes,
 // // // // // // // // // // // // // // // } from "lucide-react";
 // // // // // // // // // // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
 // // // // // // // // // // // // // // // import Footer from "../components/Footer";
 // // // // // // // // // // // // // // // import * as api from "../api/api";
 
-// // // // // // // // // // // // // // // const safeGet = (fn) =>
-// // // // // // // // // // // // // // //   typeof fn === "function"
-// // // // // // // // // // // // // // //     ? fn().catch(() => ({ data: [] }))
-// // // // // // // // // // // // // // //     : Promise.resolve({ data: [] });
+// // // // // // // // // // // // // // // const getItems = api.getItems;
+// // // // // // // // // // // // // // // const getCategories = api.getCategories;
+// // // // // // // // // // // // // // // const getEntrepots = api.getEntrepots;
+// // // // // // // // // // // // // // // const getUsers = api.getUsers;
+// // // // // // // // // // // // // // // const getStocks =
+// // // // // // // // // // // // // // //   typeof api.getStocks === "function"
+// // // // // // // // // // // // // // //     ? api.getStocks
+// // // // // // // // // // // // // // //     : async () => ({ data: [] });
+// // // // // // // // // // // // // // // const getMouvementsRecents =
+// // // // // // // // // // // // // // //   typeof api.getMouvementsRecents === "function"
+// // // // // // // // // // // // // // //     ? api.getMouvementsRecents
+// // // // // // // // // // // // // // //     : async () => ({ data: [] });
+// // // // // // // // // // // // // // // const getStockAjustments =
+// // // // // // // // // // // // // // //   typeof api.getStockAjustments === "function"
+// // // // // // // // // // // // // // //     ? api.getStockAjustments
+// // // // // // // // // // // // // // //     : typeof api.getAjustements === "function"
+// // // // // // // // // // // // // // //     ? api.getAjustements
+// // // // // // // // // // // // // // //     : async () => ({ data: [] });
 
-// // // // // // // // // // // // // // // const META = {
-// // // // // // // // // // // // // // //   categorie: { label: "Catégorie", icon: Tag, list: "getCategories", name: (r) => r.name },
-// // // // // // // // // // // // // // //   article: {
-// // // // // // // // // // // // // // //     label: "Article",
-// // // // // // // // // // // // // // //     icon: Package,
-// // // // // // // // // // // // // // //     list: "getItems",
-// // // // // // // // // // // // // // //     name: (r) => [r.name, r.mark, r.modele].filter(Boolean).join(" · "),
-// // // // // // // // // // // // // // //   },
-// // // // // // // // // // // // // // //   entrepot: {
-// // // // // // // // // // // // // // //     label: "Entrepôt",
-// // // // // // // // // // // // // // //     icon: Warehouse,
-// // // // // // // // // // // // // // //     list: "getEntrepots",
-// // // // // // // // // // // // // // //     name: (r) => r.reference || r.name || `#${r.id}`,
-// // // // // // // // // // // // // // //   },
-// // // // // // // // // // // // // // //   utilisateur: {
-// // // // // // // // // // // // // // //     label: "Utilisateur",
-// // // // // // // // // // // // // // //     icon: Users,
-// // // // // // // // // // // // // // //     list: "getUsers",
-// // // // // // // // // // // // // // //     name: (r) => `${r.first_name || ""} ${r.name || ""}`.trim() || r.email,
-// // // // // // // // // // // // // // //   },
-// // // // // // // // // // // // // // //   mouvement: {
-// // // // // // // // // // // // // // //     label: "Mouvement",
-// // // // // // // // // // // // // // //     icon: ArrowLeftRight,
-// // // // // // // // // // // // // // //     list: "getMouvementsRecents",
-// // // // // // // // // // // // // // //     name: (r) => `${r.type || "Mvt"} · ${String(r.date || "").slice(0, 10)} · qty ${r.qty ?? "—"}`,
-// // // // // // // // // // // // // // //   },
+// // // // // // // // // // // // // // // const APP_NAME = "StockFlow";
+// // // // // // // // // // // // // // // const COMPANY_NAME = "L'étoile du matin";
+
+// // // // // // // // // // // // // // // /* ========== HELPERS (alignés Details.jsx) ========== */
+// // // // // // // // // // // // // // // function buildImageFileName(item) {
+// // // // // // // // // // // // // // //   const parts = [item?.name, item?.mark, item?.modele]
+// // // // // // // // // // // // // // //     .map((p) => (p || "").toString().trim())
+// // // // // // // // // // // // // // //     .filter(Boolean)
+// // // // // // // // // // // // // // //     .map((p) =>
+// // // // // // // // // // // // // // //       p
+// // // // // // // // // // // // // // //         .replace(/[^\w\u00C0-\u024F\-]+/gi, "_")
+// // // // // // // // // // // // // // //         .replace(/_+/g, "_")
+// // // // // // // // // // // // // // //         .replace(/^_|_$/g, "")
+// // // // // // // // // // // // // // //     );
+// // // // // // // // // // // // // // //   return parts.length ? parts.join("_") : null;
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function getArticleImageSrc(item) {
+// // // // // // // // // // // // // // //   if (!item) return null;
+// // // // // // // // // // // // // // //   if (item.picture_path) {
+// // // // // // // // // // // // // // //     let p = String(item.picture_path).replace(/\\/g, "/").replace(/^\/+/, "");
+// // // // // // // // // // // // // // //     if (p.includes("/")) p = p.split("/").pop();
+// // // // // // // // // // // // // // //     if (!p.startsWith("items/") && !p.startsWith("images/")) p = `items/${p}`;
+// // // // // // // // // // // // // // //     if (p.startsWith("images/")) return `/${p}`;
+// // // // // // // // // // // // // // //     return `/images/${p}`;
+// // // // // // // // // // // // // // //   }
+// // // // // // // // // // // // // // //   const base = buildImageFileName(item);
+// // // // // // // // // // // // // // //   return base ? `/images/items/${base}.jpg` : null;
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function toIconSrc(icon) {
+// // // // // // // // // // // // // // //   if (!icon || typeof icon !== "string") return null;
+// // // // // // // // // // // // // // //   let s = icon.trim();
+// // // // // // // // // // // // // // //   if (!s) return null;
+// // // // // // // // // // // // // // //   if (
+// // // // // // // // // // // // // // //     s.startsWith("data:") ||
+// // // // // // // // // // // // // // //     s.startsWith("http://") ||
+// // // // // // // // // // // // // // //     s.startsWith("https://") ||
+// // // // // // // // // // // // // // //     s.startsWith("blob:")
+// // // // // // // // // // // // // // //   )
+// // // // // // // // // // // // // // //     return s;
+// // // // // // // // // // // // // // //   if (s.startsWith("/") && s.length < 400) return s;
+// // // // // // // // // // // // // // //   if (s.length <= 8) return null;
+// // // // // // // // // // // // // // //   if (s.toLowerCase().startsWith("base64,")) s = s.slice(7);
+// // // // // // // // // // // // // // //   const clean = s.replace(/\s/g, "");
+// // // // // // // // // // // // // // //   if (clean.length < 16) return null;
+// // // // // // // // // // // // // // //   const mime = clean.startsWith("/9j/")
+// // // // // // // // // // // // // // //     ? "image/jpeg"
+// // // // // // // // // // // // // // //     : clean.startsWith("R0lGOD")
+// // // // // // // // // // // // // // //     ? "image/gif"
+// // // // // // // // // // // // // // //     : "image/png";
+// // // // // // // // // // // // // // //   return `data:${mime};base64,${clean}`;
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function designation(item) {
+// // // // // // // // // // // // // // //   if (!item) return "—";
+// // // // // // // // // // // // // // //   return [item.name, item.mark, item.modele].filter(Boolean).join(" · ") || "—";
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function parseCategoryName(cat) {
+// // // // // // // // // // // // // // //   const raw = cat?.name || "";
+// // // // // // // // // // // // // // //   const parts = raw.split(" ");
+// // // // // // // // // // // // // // //   const firstIsEmoji = parts[0] && parts[0].length <= 2;
+// // // // // // // // // // // // // // //   return {
+// // // // // // // // // // // // // // //     emoji: firstIsEmoji ? parts[0] : null,
+// // // // // // // // // // // // // // //     name: firstIsEmoji ? parts.slice(1).join(" ") || raw : raw,
+// // // // // // // // // // // // // // //   };
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function convertirQuantite(qte, stock) {
+// // // // // // // // // // // // // // //   const level = Number(stock?.level) || 1;
+// // // // // // // // // // // // // // //   const qty_card = Number(stock?.qty_by_card) || 0;
+// // // // // // // // // // // // // // //   const qty_box = Number(stock?.qty_by_box) || 0;
+// // // // // // // // // // // // // // //   const nom_carton = stock?.niveau_3 || "Carton";
+// // // // // // // // // // // // // // //   const nom_boite = stock?.niveau_2 || "Boîte";
+// // // // // // // // // // // // // // //   const nom_piece = stock?.niveau_1 || "Pièce";
+// // // // // // // // // // // // // // //   qte = Number(qte) || 0;
+// // // // // // // // // // // // // // //   if (level === 1) return `${Math.round(qte)} ${nom_piece}`;
+// // // // // // // // // // // // // // //   if (level === 2) {
+// // // // // // // // // // // // // // //     const capacite = qty_box || 1;
+// // // // // // // // // // // // // // //     const cartons = Math.trunc(qte);
+// // // // // // // // // // // // // // //     const pieces = Math.round((qte - cartons) * capacite);
+// // // // // // // // // // // // // // //     const texte = [];
+// // // // // // // // // // // // // // //     if (cartons > 0) texte.push(`${cartons} ${nom_carton}`);
+// // // // // // // // // // // // // // //     if (pieces > 0) texte.push(`${pieces} ${nom_piece}`);
+// // // // // // // // // // // // // // //     return texte.join(" • ") || `0 ${nom_piece}`;
+// // // // // // // // // // // // // // //   }
+// // // // // // // // // // // // // // //   if (level === 3) {
+// // // // // // // // // // // // // // //     const boites_par_carton = qty_card || 1;
+// // // // // // // // // // // // // // //     const pieces_par_boite = qty_box || 1;
+// // // // // // // // // // // // // // //     const cartons = Math.trunc(qte);
+// // // // // // // // // // // // // // //     const total_boites = (qte - cartons) * boites_par_carton;
+// // // // // // // // // // // // // // //     const boites = Math.trunc(total_boites);
+// // // // // // // // // // // // // // //     const pieces = Math.round((total_boites - boites) * pieces_par_boite);
+// // // // // // // // // // // // // // //     const texte = [];
+// // // // // // // // // // // // // // //     if (cartons > 0) texte.push(`${cartons} ${nom_carton}`);
+// // // // // // // // // // // // // // //     if (boites > 0) texte.push(`${boites} ${nom_boite}`);
+// // // // // // // // // // // // // // //     if (pieces > 0) texte.push(`${pieces} ${nom_piece}`);
+// // // // // // // // // // // // // // //     return texte.join(" • ") || `0 ${nom_piece}`;
+// // // // // // // // // // // // // // //   }
+// // // // // // // // // // // // // // //   return `${qte}`;
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // const calculerStockTotal = (itemId, stocks, mouvements, stock_ajustments) => {
+// // // // // // // // // // // // // // //   const itemIdNum = Number(itemId);
+// // // // // // // // // // // // // // //   const entrepots = new Set();
+// // // // // // // // // // // // // // //   (stocks || [])
+// // // // // // // // // // // // // // //     .filter((s) => Number(s.item_id) === itemIdNum && Number(s.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //     .forEach((s) => entrepots.add(Number(s.entrepot_id)));
+// // // // // // // // // // // // // // //   (mouvements || [])
+// // // // // // // // // // // // // // //     .filter((m) => Number(m.item_id) === itemIdNum && Number(m.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //     .forEach((m) => entrepots.add(Number(m.entrepot_id)));
+// // // // // // // // // // // // // // //   (stock_ajustments || [])
+// // // // // // // // // // // // // // //     .filter((a) => Number(a.item_id) === itemIdNum && Number(a.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //     .forEach((a) => entrepots.add(Number(a.entrepot_id)));
+
+// // // // // // // // // // // // // // //   let total = 0;
+// // // // // // // // // // // // // // //   entrepots.forEach((entrepotId) => {
+// // // // // // // // // // // // // // //     const stock = (stocks || []).find(
+// // // // // // // // // // // // // // //       (s) =>
+// // // // // // // // // // // // // // //         Number(s.item_id) === itemIdNum &&
+// // // // // // // // // // // // // // //         Number(s.entrepot_id) === entrepotId &&
+// // // // // // // // // // // // // // //         Number(s.deleted ?? 0) === 0
+// // // // // // // // // // // // // // //     );
+// // // // // // // // // // // // // // //     let q = Number(stock?.stock_actual ?? 0);
+// // // // // // // // // // // // // // //     (mouvements || [])
+// // // // // // // // // // // // // // //       .filter(
+// // // // // // // // // // // // // // //         (m) =>
+// // // // // // // // // // // // // // //           Number(m.item_id) === itemIdNum &&
+// // // // // // // // // // // // // // //           Number(m.entrepot_id) === entrepotId &&
+// // // // // // // // // // // // // // //           Number(m.deleted ?? 0) === 0
+// // // // // // // // // // // // // // //       )
+// // // // // // // // // // // // // // //       .forEach((m) => {
+// // // // // // // // // // // // // // //         const qty = Number(m.qty ?? 0);
+// // // // // // // // // // // // // // //         if (m.type === "Entrée") q += qty;
+// // // // // // // // // // // // // // //         else if (m.type === "Sortie") q -= qty;
+// // // // // // // // // // // // // // //       });
+// // // // // // // // // // // // // // //     (stock_ajustments || [])
+// // // // // // // // // // // // // // //       .filter(
+// // // // // // // // // // // // // // //         (a) =>
+// // // // // // // // // // // // // // //           Number(a.item_id) === itemIdNum &&
+// // // // // // // // // // // // // // //           Number(a.entrepot_id) === entrepotId &&
+// // // // // // // // // // // // // // //           Number(a.deleted ?? 0) === 0
+// // // // // // // // // // // // // // //       )
+// // // // // // // // // // // // // // //       .forEach((a) => {
+// // // // // // // // // // // // // // //         const qty = Number(a.qty ?? 0);
+// // // // // // // // // // // // // // //         if (a.type === "Entrée") q += qty;
+// // // // // // // // // // // // // // //         else if (a.type === "Sortie") q -= qty;
+// // // // // // // // // // // // // // //       });
+// // // // // // // // // // // // // // //     total += q;
+// // // // // // // // // // // // // // //   });
+// // // // // // // // // // // // // // //   return total;
 // // // // // // // // // // // // // // // };
 
+// // // // // // // // // // // // // // // function loadScript(src) {
+// // // // // // // // // // // // // // //   return new Promise((resolve, reject) => {
+// // // // // // // // // // // // // // //     if (document.querySelector(`script[src="${src}"]`)) {
+// // // // // // // // // // // // // // //       resolve();
+// // // // // // // // // // // // // // //       return;
+// // // // // // // // // // // // // // //     }
+// // // // // // // // // // // // // // //     const s = document.createElement("script");
+// // // // // // // // // // // // // // //     s.src = src;
+// // // // // // // // // // // // // // //     s.async = true;
+// // // // // // // // // // // // // // //     s.onload = () => resolve();
+// // // // // // // // // // // // // // //     s.onerror = reject;
+// // // // // // // // // // // // // // //     document.head.appendChild(s);
+// // // // // // // // // // // // // // //   });
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // async function loadJsPDF() {
+// // // // // // // // // // // // // // //   if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+// // // // // // // // // // // // // // //   await loadScript(
+// // // // // // // // // // // // // // //     "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // //   if (!window.jspdf?.jsPDF) throw new Error("jsPDF non chargé");
+// // // // // // // // // // // // // // //   return window.jspdf.jsPDF;
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // const TYPE_META = {
+// // // // // // // // // // // // // // //   categorie: { label: "Catégorie", icon: Tag, color: "#60a5fa", badge: "CATÉGORIE" },
+// // // // // // // // // // // // // // //   article: { label: "Article", icon: Package, color: "var(--gradient-start)", badge: "ARTICLE" },
+// // // // // // // // // // // // // // //   entrepot: { label: "Entrepôt", icon: Warehouse, color: "#a78bfa", badge: "ENTREPÔT" },
+// // // // // // // // // // // // // // //   utilisateur: { label: "Utilisateur", icon: Users, color: "#fbbf24", badge: "UTILISATEUR" },
+// // // // // // // // // // // // // // //   mouvement: { label: "Mouvement", icon: ArrowLeftRight, color: "#34d399", badge: "MOUVEMENT" },
+// // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // /* ========== PAGE ========== */
 // // // // // // // // // // // // // // // export default function DetailsCarousel() {
 // // // // // // // // // // // // // // //   const { type } = useParams();
 // // // // // // // // // // // // // // //   const navigate = useNavigate();
 // // // // // // // // // // // // // // //   const theme =
-// // // // // // // // // // // // // // //     (typeof sessionStorage !== "undefined" && sessionStorage.getItem("theme")) ||
+// // // // // // // // // // // // // // //     (typeof sessionStorage !== "undefined" &&
+// // // // // // // // // // // // // // //       sessionStorage.getItem("theme")) ||
 // // // // // // // // // // // // // // //     "dark-galaxy";
 
-// // // // // // // // // // // // // // //   const meta = META[type] || META.categorie;
-// // // // // // // // // // // // // // //   const Icon = meta.icon;
+// // // // // // // // // // // // // // //   const meta = TYPE_META[type] || {
+// // // // // // // // // // // // // // //     label: type || "Élément",
+// // // // // // // // // // // // // // //     icon: Info,
+// // // // // // // // // // // // // // //     color: "var(--gradient-start)",
+// // // // // // // // // // // // // // //     badge: "DÉTAIL",
+// // // // // // // // // // // // // // //   };
+// // // // // // // // // // // // // // //   const MetaIcon = meta.icon;
 
 // // // // // // // // // // // // // // //   const [items, setItems] = useState([]);
 // // // // // // // // // // // // // // //   const [index, setIndex] = useState(0);
 // // // // // // // // // // // // // // //   const [loading, setLoading] = useState(true);
+// // // // // // // // // // // // // // //   const [error, setError] = useState("");
+// // // // // // // // // // // // // // //   const [ctx, setCtx] = useState({ stocks: [], mouvements: [], ajustements: [], categories: [] });
+// // // // // // // // // // // // // // //   const [pdfBusy, setPdfBusy] = useState(false);
 
 // // // // // // // // // // // // // // //   useEffect(() => {
 // // // // // // // // // // // // // // //     let cancelled = false;
 // // // // // // // // // // // // // // //     (async () => {
 // // // // // // // // // // // // // // //       setLoading(true);
+// // // // // // // // // // // // // // //       setError("");
 // // // // // // // // // // // // // // //       try {
-// // // // // // // // // // // // // // //         const fn = api[meta.list];
-// // // // // // // // // // // // // // //         const res = await safeGet(fn);
-// // // // // // // // // // // // // // //         const raw = res?.data ?? res ?? [];
-// // // // // // // // // // // // // // //         const list = (Array.isArray(raw) ? raw : []).filter(
-// // // // // // // // // // // // // // //           (x) => Number(x.deleted ?? 0) === 0
-// // // // // // // // // // // // // // //         );
-// // // // // // // // // // // // // // //         list.sort((a, b) =>
-// // // // // // // // // // // // // // //           String(meta.name(a) || "").localeCompare(String(meta.name(b) || ""), "fr")
-// // // // // // // // // // // // // // //         );
+// // // // // // // // // // // // // // //         const [stocksRes, mvtRes, ajRes] = await Promise.all([
+// // // // // // // // // // // // // // //           getStocks().catch(() => ({ data: [] })),
+// // // // // // // // // // // // // // //           getMouvementsRecents().catch(() => ({ data: [] })),
+// // // // // // // // // // // // // // //           getStockAjustments().catch(() => ({ data: [] })),
+// // // // // // // // // // // // // // //         ]);
+// // // // // // // // // // // // // // //         const stocks = stocksRes.data || [];
+// // // // // // // // // // // // // // //         const mouvements = mvtRes.data || [];
+// // // // // // // // // // // // // // //         const ajustements = ajRes.data || [];
+
+// // // // // // // // // // // // // // //         let list = [];
+// // // // // // // // // // // // // // //         let categories = [];
+
+// // // // // // // // // // // // // // //         if (type === "categorie") {
+// // // // // // // // // // // // // // //           const [cr, ir] = await Promise.all([
+// // // // // // // // // // // // // // //             getCategories(),
+// // // // // // // // // // // // // // //             getItems().catch(() => ({ data: [] })),
+// // // // // // // // // // // // // // //           ]);
+// // // // // // // // // // // // // // //           categories = (cr.data || []).filter((c) => Number(c.deleted ?? 0) === 0);
+// // // // // // // // // // // // // // //           const allItems = (ir.data || []).filter((i) => Number(i.deleted ?? 0) === 0);
+// // // // // // // // // // // // // // //           list = categories
+// // // // // // // // // // // // // // //             .map((c) => ({
+// // // // // // // // // // // // // // //               ...c,
+// // // // // // // // // // // // // // //               _articles: allItems.filter(
+// // // // // // // // // // // // // // //                 (i) => Number(i.category_item) === Number(c.id)
+// // // // // // // // // // // // // // //               ),
+// // // // // // // // // // // // // // //             }))
+// // // // // // // // // // // // // // //             .sort((a, b) =>
+// // // // // // // // // // // // // // //               parseCategoryName(a).name.localeCompare(
+// // // // // // // // // // // // // // //                 parseCategoryName(b).name,
+// // // // // // // // // // // // // // //                 "fr",
+// // // // // // // // // // // // // // //                 { sensitivity: "base" }
+// // // // // // // // // // // // // // //               )
+// // // // // // // // // // // // // // //             );
+// // // // // // // // // // // // // // //         } else if (type === "article") {
+// // // // // // // // // // // // // // //           const [ir, cr] = await Promise.all([
+// // // // // // // // // // // // // // //             getItems(),
+// // // // // // // // // // // // // // //             getCategories().catch(() => ({ data: [] })),
+// // // // // // // // // // // // // // //           ]);
+// // // // // // // // // // // // // // //           categories = cr.data || [];
+// // // // // // // // // // // // // // //           list = (ir.data || [])
+// // // // // // // // // // // // // // //             .filter((i) => Number(i.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //             .map((i) => ({
+// // // // // // // // // // // // // // //               ...i,
+// // // // // // // // // // // // // // //               stockReel: calculerStockTotal(i.id, stocks, mouvements, ajustements),
+// // // // // // // // // // // // // // //               _catName:
+// // // // // // // // // // // // // // //                 (categories.find((c) => Number(c.id) === Number(i.category_item)) || {})
+// // // // // // // // // // // // // // //                   .name || "—",
+// // // // // // // // // // // // // // //             }))
+// // // // // // // // // // // // // // //             .sort((a, b) =>
+// // // // // // // // // // // // // // //               String(a.name || "").localeCompare(String(b.name || ""), "fr")
+// // // // // // // // // // // // // // //             );
+// // // // // // // // // // // // // // //         } else if (type === "entrepot") {
+// // // // // // // // // // // // // // //           const er = await getEntrepots();
+// // // // // // // // // // // // // // //           list = (er.data || [])
+// // // // // // // // // // // // // // //             .filter((e) => Number(e.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //             .sort((a, b) =>
+// // // // // // // // // // // // // // //               String(a.name || a.reference || "").localeCompare(
+// // // // // // // // // // // // // // //                 String(b.name || b.reference || ""),
+// // // // // // // // // // // // // // //                 "fr"
+// // // // // // // // // // // // // // //               )
+// // // // // // // // // // // // // // //             );
+// // // // // // // // // // // // // // //         } else if (type === "utilisateur") {
+// // // // // // // // // // // // // // //           const ur = await getUsers();
+// // // // // // // // // // // // // // //           list = (ur.data || [])
+// // // // // // // // // // // // // // //             .filter((u) => Number(u.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //             .sort((a, b) =>
+// // // // // // // // // // // // // // //               String(a.name || "").localeCompare(String(b.name || ""), "fr")
+// // // // // // // // // // // // // // //             );
+// // // // // // // // // // // // // // //         } else if (type === "mouvement") {
+// // // // // // // // // // // // // // //           list = (mouvements || [])
+// // // // // // // // // // // // // // //             .filter((m) => Number(m.deleted ?? 0) === 0)
+// // // // // // // // // // // // // // //             .sort((a, b) =>
+// // // // // // // // // // // // // // //               String(b.date || b.created_at || "").localeCompare(
+// // // // // // // // // // // // // // //                 String(a.date || a.created_at || "")
+// // // // // // // // // // // // // // //               )
+// // // // // // // // // // // // // // //             );
+// // // // // // // // // // // // // // //         } else {
+// // // // // // // // // // // // // // //           throw new Error(`Type non supporté : ${type}`);
+// // // // // // // // // // // // // // //         }
+
 // // // // // // // // // // // // // // //         if (!cancelled) {
 // // // // // // // // // // // // // // //           setItems(list);
 // // // // // // // // // // // // // // //           setIndex(0);
+// // // // // // // // // // // // // // //           setCtx({ stocks, mouvements, ajustements, categories });
 // // // // // // // // // // // // // // //         }
+// // // // // // // // // // // // // // //       } catch (e) {
+// // // // // // // // // // // // // // //         if (!cancelled) setError(e.message || "Erreur de chargement");
 // // // // // // // // // // // // // // //       } finally {
 // // // // // // // // // // // // // // //         if (!cancelled) setLoading(false);
 // // // // // // // // // // // // // // //       }
@@ -96,7 +668,7 @@
 // // // // // // // // // // // // // // //     return () => {
 // // // // // // // // // // // // // // //       cancelled = true;
 // // // // // // // // // // // // // // //     };
-// // // // // // // // // // // // // // //   }, [type, meta.list]);
+// // // // // // // // // // // // // // //   }, [type]);
 
 // // // // // // // // // // // // // // //   const current = items[index] || null;
 
@@ -117,167 +689,941 @@
 // // // // // // // // // // // // // // //     return () => window.removeEventListener("keydown", onKey);
 // // // // // // // // // // // // // // //   }, [prev, next]);
 
-// // // // // // // // // // // // // // //   const fields = useMemo(() => {
-// // // // // // // // // // // // // // //     if (!current) return [];
-// // // // // // // // // // // // // // //     const skip = new Set(["icon", "picture", "picture_path", "password", "hash"]);
-// // // // // // // // // // // // // // //     return Object.entries(current)
-// // // // // // // // // // // // // // //       .filter(([k, v]) => !skip.has(k) && v != null && String(v).length < 500)
-// // // // // // // // // // // // // // //       .slice(0, 24);
-// // // // // // // // // // // // // // //   }, [current]);
+// // // // // // // // // // // // // // //   const titleOf = useCallback(
+// // // // // // // // // // // // // // //     (row) => {
+// // // // // // // // // // // // // // //       if (!row) return "—";
+// // // // // // // // // // // // // // //       if (type === "categorie") return parseCategoryName(row).name;
+// // // // // // // // // // // // // // //       if (type === "article") return designation(row);
+// // // // // // // // // // // // // // //       if (type === "entrepot") return row.name || row.reference || `#${row.id}`;
+// // // // // // // // // // // // // // //       if (type === "utilisateur")
+// // // // // // // // // // // // // // //         return `${row.first_name || ""} ${row.name || ""}`.trim() || row.email;
+// // // // // // // // // // // // // // //       if (type === "mouvement")
+// // // // // // // // // // // // // // //         return `${row.type || "Mvt"} · ${String(row.date || "").slice(0, 10)}`;
+// // // // // // // // // // // // // // //       return `#${row.id}`;
+// // // // // // // // // // // // // // //     },
+// // // // // // // // // // // // // // //     [type]
+// // // // // // // // // // // // // // //   );
 
-// // // // // // // // // // // // // // //   const css = themeCssVars?.(theme) || {};
+// // // // // // // // // // // // // // //   const handlePdf = useCallback(async () => {
+// // // // // // // // // // // // // // //     if (!current || pdfBusy) return;
+// // // // // // // // // // // // // // //     setPdfBusy(true);
+// // // // // // // // // // // // // // //     try {
+// // // // // // // // // // // // // // //       const JsPDF = await loadJsPDF();
+// // // // // // // // // // // // // // //       const doc = new JsPDF({ unit: "mm", format: "a4" });
+// // // // // // // // // // // // // // //       const pageW = doc.internal.pageSize.getWidth();
+// // // // // // // // // // // // // // //       const margin = 14;
+// // // // // // // // // // // // // // //       let y = 30;
+
+// // // // // // // // // // // // // // //       doc.setFillColor(79, 70, 229);
+// // // // // // // // // // // // // // //       doc.rect(0, 0, pageW, 22, "F");
+// // // // // // // // // // // // // // //       doc.setTextColor(255, 255, 255);
+// // // // // // // // // // // // // // //       doc.setFontSize(14);
+// // // // // // // // // // // // // // //       doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, 14);
+// // // // // // // // // // // // // // //       doc.setFontSize(10);
+// // // // // // // // // // // // // // //       doc.text(`Detail All · ${meta.label}`, pageW - margin, 14, { align: "right" });
+
+// // // // // // // // // // // // // // //       doc.setTextColor(30, 41, 59);
+// // // // // // // // // // // // // // //       doc.setFontSize(16);
+// // // // // // // // // // // // // // //       doc.text(String(titleOf(current)).slice(0, 80), margin, y);
+// // // // // // // // // // // // // // //       y += 10;
+// // // // // // // // // // // // // // //       doc.setFontSize(10);
+// // // // // // // // // // // // // // //       doc.setTextColor(100, 116, 139);
+// // // // // // // // // // // // // // //       doc.text(`ID #${current.id} · ${index + 1}/${items.length}`, margin, y);
+// // // // // // // // // // // // // // //       y += 12;
+
+// // // // // // // // // // // // // // //       const lines = [];
+// // // // // // // // // // // // // // //       if (type === "categorie") {
+// // // // // // // // // // // // // // //         lines.push(`Nom : ${parseCategoryName(current).name}`);
+// // // // // // // // // // // // // // //         lines.push(`Description : ${current.description || "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Articles liés : ${(current._articles || []).length}`);
+// // // // // // // // // // // // // // //       } else if (type === "article") {
+// // // // // // // // // // // // // // //         lines.push(`Désignation : ${designation(current)}`);
+// // // // // // // // // // // // // // //         lines.push(`Catégorie : ${current._catName || "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Stock : ${convertirQuantite(current.stockReel, current)}`);
+// // // // // // // // // // // // // // //         lines.push(`Prix vente : ${current.sale_price_fc ?? "—"} FC`);
+// // // // // // // // // // // // // // //       } else if (type === "entrepot") {
+// // // // // // // // // // // // // // //         lines.push(`Nom : ${current.name || current.reference || "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Localisation : ${current.location || current.localisation || "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Capacité : ${current.capacity ?? "—"}`);
+// // // // // // // // // // // // // // //       } else if (type === "utilisateur") {
+// // // // // // // // // // // // // // //         lines.push(`Nom : ${titleOf(current)}`);
+// // // // // // // // // // // // // // //         lines.push(`Email : ${current.email || "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Rôle : ${current.role || "—"}`);
+// // // // // // // // // // // // // // //       } else if (type === "mouvement") {
+// // // // // // // // // // // // // // //         lines.push(`Type : ${current.type || "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Qté : ${current.qty ?? "—"}`);
+// // // // // // // // // // // // // // //         lines.push(`Date : ${String(current.date || current.created_at || "—").slice(0, 16)}`);
+// // // // // // // // // // // // // // //       }
+
+// // // // // // // // // // // // // // //       doc.setTextColor(30, 41, 59);
+// // // // // // // // // // // // // // //       doc.setFontSize(11);
+// // // // // // // // // // // // // // //       lines.forEach((line) => {
+// // // // // // // // // // // // // // //         doc.text(line, margin, y);
+// // // // // // // // // // // // // // //         y += 7;
+// // // // // // // // // // // // // // //       });
+
+// // // // // // // // // // // // // // //       doc.setFontSize(8);
+// // // // // // // // // // // // // // //       doc.setTextColor(148, 163, 184);
+// // // // // // // // // // // // // // //       doc.text(`Généré le ${new Date().toLocaleString("fr-FR")}`, margin, 287);
+
+// // // // // // // // // // // // // // //       doc.save(
+// // // // // // // // // // // // // // //         `StockFlow_${type}_${current.id}_${index + 1}.pdf`
+// // // // // // // // // // // // // // //       );
+// // // // // // // // // // // // // // //     } catch (e) {
+// // // // // // // // // // // // // // //       console.error(e);
+// // // // // // // // // // // // // // //       alert("Export PDF impossible.");
+// // // // // // // // // // // // // // //     } finally {
+// // // // // // // // // // // // // // //       setPdfBusy(false);
+// // // // // // // // // // // // // // //     }
+// // // // // // // // // // // // // // //   }, [current, pdfBusy, type, meta.label, titleOf, index, items.length]);
+
+// // // // // // // // // // // // // // //   const css =
+// // // // // // // // // // // // // // //     typeof themeCssVars === "function" ? themeCssVars(theme) : {};
 
 // // // // // // // // // // // // // // //   return (
-// // // // // // // // // // // // // // //     <div style={{ minHeight: "100vh", position: "relative", ...css }}>
-// // // // // // // // // // // // // // //       <ThemeBackground theme={theme} />
+// // // // // // // // // // // // // // //     <div
+// // // // // // // // // // // // // // //       style={{
+// // // // // // // // // // // // // // //         position: "relative",
+// // // // // // // // // // // // // // //         minHeight: "100%",
+// // // // // // // // // // // // // // //         width: "100%",
+// // // // // // // // // // // // // // //         ...css,
+// // // // // // // // // // // // // // //       }}
+// // // // // // // // // // // // // // //     >
+// // // // // // // // // // // // // // //       <div
+// // // // // // // // // // // // // // //         aria-hidden
+// // // // // // // // // // // // // // //         style={{
+// // // // // // // // // // // // // // //           position: "fixed",
+// // // // // // // // // // // // // // //           inset: 0,
+// // // // // // // // // // // // // // //           zIndex: 0,
+// // // // // // // // // // // // // // //           pointerEvents: "none",
+// // // // // // // // // // // // // // //         }}
+// // // // // // // // // // // // // // //       >
+// // // // // // // // // // // // // // //         <ThemeBackground theme={theme} />
+// // // // // // // // // // // // // // //       </div>
+
 // // // // // // // // // // // // // // //       <div
 // // // // // // // // // // // // // // //         style={{
 // // // // // // // // // // // // // // //           position: "relative",
 // // // // // // // // // // // // // // //           zIndex: 1,
-// // // // // // // // // // // // // // //           maxWidth: 720,
+// // // // // // // // // // // // // // //           maxWidth: 920,
 // // // // // // // // // // // // // // //           margin: "0 auto",
-// // // // // // // // // // // // // // //           padding: "1.25rem 1rem 3rem",
+// // // // // // // // // // // // // // //           padding: "0 16px 2.5rem",
 // // // // // // // // // // // // // // //         }}
 // // // // // // // // // // // // // // //       >
-// // // // // // // // // // // // // // //         <button type="button" onClick={() => navigate(-1)} style={btnBack}>
-// // // // // // // // // // // // // // //           <ArrowLeft size={16} /> Retour
-// // // // // // // // // // // // // // //         </button>
-
-// // // // // // // // // // // // // // //         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "1rem 0 1.25rem" }}>
-// // // // // // // // // // // // // // //           <div style={iconBox}>
-// // // // // // // // // // // // // // //             <Layers size={22} color="#fff" />
-// // // // // // // // // // // // // // //           </div>
-// // // // // // // // // // // // // // //           <div>
-// // // // // // // // // // // // // // //             <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase" }}>
-// // // // // // // // // // // // // // //               Detail All · {meta.label}
-// // // // // // // // // // // // // // //             </div>
-// // // // // // // // // // // // // // //             <h1 style={{ margin: 0, fontSize: "1.35rem", color: "var(--text)" }}>
-// // // // // // // // // // // // // // //               {loading ? "Chargement…" : `${items.length} élément(s)`}
-// // // // // // // // // // // // // // //             </h1>
-// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //         {/* TOP BAR */}
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             display: "flex",
+// // // // // // // // // // // // // // //             justifyContent: "space-between",
+// // // // // // // // // // // // // // //             alignItems: "center",
+// // // // // // // // // // // // // // //             gap: 10,
+// // // // // // // // // // // // // // //             flexWrap: "wrap",
+// // // // // // // // // // // // // // //             marginTop: "0.5rem",
+// // // // // // // // // // // // // // //             marginBottom: "1.25rem",
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           <button type="button" onClick={() => navigate(-1)} style={topBtn}>
+// // // // // // // // // // // // // // //             <ArrowLeft size={16} /> Retour
+// // // // // // // // // // // // // // //           </button>
+// // // // // // // // // // // // // // //           <button
+// // // // // // // // // // // // // // //             type="button"
+// // // // // // // // // // // // // // //             onClick={handlePdf}
+// // // // // // // // // // // // // // //             disabled={!current || pdfBusy}
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               ...topBtn,
+// // // // // // // // // // // // // // //               background:
+// // // // // // // // // // // // // // //                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // // // //               color: "#fff",
+// // // // // // // // // // // // // // //               border: "none",
+// // // // // // // // // // // // // // //               boxShadow: "0 8px 22px var(--glow-color)",
+// // // // // // // // // // // // // // //               opacity: !current || pdfBusy ? 0.7 : 1,
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <Download size={16} />
+// // // // // // // // // // // // // // //             {pdfBusy ? "Export…" : "Exporter PDF"}
+// // // // // // // // // // // // // // //           </button>
 // // // // // // // // // // // // // // //         </div>
 
-// // // // // // // // // // // // // // //         {/* Flèche haut */}
-// // // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-// // // // // // // // // // // // // // //           <button type="button" onClick={prev} disabled={!items.length} style={arrowBtn} title="Précédent (↑)">
+// // // // // // // // // // // // // // //         {/* HEADER */}
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             display: "flex",
+// // // // // // // // // // // // // // //             flexDirection: "column",
+// // // // // // // // // // // // // // //             alignItems: "center",
+// // // // // // // // // // // // // // //             textAlign: "center",
+// // // // // // // // // // // // // // //             marginBottom: "1.25rem",
+// // // // // // // // // // // // // // //             gap: "0.65rem",
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               width: 68,
+// // // // // // // // // // // // // // //               height: 68,
+// // // // // // // // // // // // // // //               borderRadius: 20,
+// // // // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // // // //               alignItems: "center",
+// // // // // // // // // // // // // // //               justifyContent: "center",
+// // // // // // // // // // // // // // //               background: `linear-gradient(145deg, ${meta.color}, var(--gradient-end))`,
+// // // // // // // // // // // // // // //               color: "#fff",
+// // // // // // // // // // // // // // //               boxShadow: "0 12px 32px var(--glow-color)",
+// // // // // // // // // // // // // // //               border: "1px solid rgba(255,255,255,0.22)",
+// // // // // // // // // // // // // // //               position: "relative",
+// // // // // // // // // // // // // // //               overflow: "hidden",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 position: "absolute",
+// // // // // // // // // // // // // // //                 top: 6,
+// // // // // // // // // // // // // // //                 left: 10,
+// // // // // // // // // // // // // // //                 width: 18,
+// // // // // // // // // // // // // // //                 height: 9,
+// // // // // // // // // // // // // // //                 borderRadius: "50%",
+// // // // // // // // // // // // // // //                 background: "rgba(255,255,255,0.45)",
+// // // // // // // // // // // // // // //                 transform: "rotate(-20deg)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             />
+// // // // // // // // // // // // // // //             <MetaIcon size={30} />
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               display: "inline-flex",
+// // // // // // // // // // // // // // //               alignItems: "center",
+// // // // // // // // // // // // // // //               gap: "0.45rem",
+// // // // // // // // // // // // // // //               padding: "5px 12px",
+// // // // // // // // // // // // // // //               borderRadius: 999,
+// // // // // // // // // // // // // // //               background: "var(--glass-bg)",
+// // // // // // // // // // // // // // //               border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // //               color: meta.color,
+// // // // // // // // // // // // // // //               fontSize: "0.7rem",
+// // // // // // // // // // // // // // //               fontWeight: 700,
+// // // // // // // // // // // // // // //               letterSpacing: ".08em",
+// // // // // // // // // // // // // // //               textTransform: "uppercase",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <Layers size={12} /> Detail All · {meta.badge}
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <h1
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //               fontSize: "clamp(1.45rem, 3.2vw, 2rem)",
+// // // // // // // // // // // // // // //               fontWeight: 900,
+// // // // // // // // // // // // // // //               margin: 0,
+// // // // // // // // // // // // // // //               background:
+// // // // // // // // // // // // // // //                 "linear-gradient(135deg, var(--text), var(--gradient-start))",
+// // // // // // // // // // // // // // //               WebkitBackgroundClip: "text",
+// // // // // // // // // // // // // // //               WebkitTextFillColor: "transparent",
+// // // // // // // // // // // // // // //               backgroundClip: "text",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             {meta.label}
+// // // // // // // // // // // // // // //             {loading ? "" : ` · ${items.length}`}
+// // // // // // // // // // // // // // //           </h1>
+// // // // // // // // // // // // // // //           <p
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               margin: 0,
+// // // // // // // // // // // // // // //               color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //               fontSize: "0.9rem",
+// // // // // // // // // // // // // // //               maxWidth: 480,
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             Parcourez toutes les fiches une par une. Flèches ↑ ↓ ou boutons.
+// // // // // // // // // // // // // // //           </p>
+// // // // // // // // // // // // // // //         </div>
+
+// // // // // // // // // // // // // // //         {/* ARROW UP */}
+// // // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+// // // // // // // // // // // // // // //           <button
+// // // // // // // // // // // // // // //             type="button"
+// // // // // // // // // // // // // // //             onClick={prev}
+// // // // // // // // // // // // // // //             disabled={!items.length}
+// // // // // // // // // // // // // // //             style={arrowBtn}
+// // // // // // // // // // // // // // //             title="Précédent"
+// // // // // // // // // // // // // // //           >
 // // // // // // // // // // // // // // //             <ChevronUp size={28} />
 // // // // // // // // // // // // // // //           </button>
 // // // // // // // // // // // // // // //         </div>
 
-// // // // // // // // // // // // // // //         {/* Cadre central */}
-// // // // // // // // // // // // // // //         <div
-// // // // // // // // // // // // // // //           style={{
-// // // // // // // // // // // // // // //             borderRadius: 20,
-// // // // // // // // // // // // // // //             border: "1px solid var(--glass-border)",
-// // // // // // // // // // // // // // //             background: "var(--glass-bg)",
-// // // // // // // // // // // // // // //             backdropFilter: "blur(14px)",
-// // // // // // // // // // // // // // //             padding: "1.25rem 1.35rem",
-// // // // // // // // // // // // // // //             minHeight: 280,
-// // // // // // // // // // // // // // //             boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
-// // // // // // // // // // // // // // //           }}
-// // // // // // // // // // // // // // //         >
-// // // // // // // // // // // // // // //           {loading ? (
-// // // // // // // // // // // // // // //             <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>Chargement…</p>
-// // // // // // // // // // // // // // //           ) : !current ? (
-// // // // // // // // // // // // // // //             <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>Aucun élément.</p>
-// // // // // // // // // // // // // // //           ) : (
-// // // // // // // // // // // // // // //             <>
-// // // // // // // // // // // // // // //               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-// // // // // // // // // // // // // // //                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-// // // // // // // // // // // // // // //                   <Icon size={22} style={{ color: "var(--gradient-start)" }} />
-// // // // // // // // // // // // // // //                   <div>
-// // // // // // // // // // // // // // //                     <div style={{ fontWeight: 800, fontSize: "1.15rem", color: "var(--text)" }}>
-// // // // // // // // // // // // // // //                       {meta.name(current)}
-// // // // // // // // // // // // // // //                     </div>
-// // // // // // // // // // // // // // //                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-// // // // // // // // // // // // // // //                       {index + 1} / {items.length} · ID {current.id}
-// // // // // // // // // // // // // // //                     </div>
-// // // // // // // // // // // // // // //                   </div>
-// // // // // // // // // // // // // // //                 </div>
-// // // // // // // // // // // // // // //                 <button
-// // // // // // // // // // // // // // //                   type="button"
-// // // // // // // // // // // // // // //                   onClick={() => navigate(`/details/${type}/${current.id}`)}
-// // // // // // // // // // // // // // //                   style={btnGhost}
-// // // // // // // // // // // // // // //                 >
-// // // // // // // // // // // // // // //                   <ExternalLink size={14} /> Fiche complète
-// // // // // // // // // // // // // // //                 </button>
-// // // // // // // // // // // // // // //               </div>
+// // // // // // // // // // // // // // //         {/* CONTENT */}
+// // // // // // // // // // // // // // //         {loading ? (
+// // // // // // // // // // // // // // //           <GlassCard>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 padding: "3rem",
+// // // // // // // // // // // // // // //                 textAlign: "center",
+// // // // // // // // // // // // // // //                 color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               Chargement…
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //           </GlassCard>
+// // // // // // // // // // // // // // //         ) : error ? (
+// // // // // // // // // // // // // // //           <GlassCard>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 padding: "2rem",
+// // // // // // // // // // // // // // //                 textAlign: "center",
+// // // // // // // // // // // // // // //                 color: "#f87171",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               ⚠ {error}
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //           </GlassCard>
+// // // // // // // // // // // // // // //         ) : !current ? (
+// // // // // // // // // // // // // // //           <GlassCard>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 padding: "2rem",
+// // // // // // // // // // // // // // //                 textAlign: "center",
+// // // // // // // // // // // // // // //                 color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               Aucun élément.
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //           </GlassCard>
+// // // // // // // // // // // // // // //         ) : (
+// // // // // // // // // // // // // // //           <>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 textAlign: "center",
+// // // // // // // // // // // // // // //                 marginBottom: 10,
+// // // // // // // // // // // // // // //                 fontSize: "0.82rem",
+// // // // // // // // // // // // // // //                 color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //                 fontWeight: 600,
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               {index + 1} / {items.length}
+// // // // // // // // // // // // // // //             </div>
 
-// // // // // // // // // // // // // // //               <div
-// // // // // // // // // // // // // // //                 style={{
-// // // // // // // // // // // // // // //                   display: "grid",
-// // // // // // // // // // // // // // //                   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-// // // // // // // // // // // // // // //                   gap: "0.65rem 1rem",
-// // // // // // // // // // // // // // //                 }}
-// // // // // // // // // // // // // // //               >
-// // // // // // // // // // // // // // //                 {fields.map(([k, v]) => (
-// // // // // // // // // // // // // // //                   <div
-// // // // // // // // // // // // // // //                     key={k}
-// // // // // // // // // // // // // // //                     style={{
-// // // // // // // // // // // // // // //                       padding: "0.55rem 0.7rem",
-// // // // // // // // // // // // // // //                       borderRadius: 12,
-// // // // // // // // // // // // // // //                       border: "1px solid var(--glass-border)",
-// // // // // // // // // // // // // // //                       background: "rgba(255,255,255,0.03)",
-// // // // // // // // // // // // // // //                     }}
-// // // // // // // // // // // // // // //                   >
-// // // // // // // // // // // // // // //                     <div
-// // // // // // // // // // // // // // //                       style={{
-// // // // // // // // // // // // // // //                         fontSize: "0.68rem",
-// // // // // // // // // // // // // // //                         fontWeight: 700,
-// // // // // // // // // // // // // // //                         textTransform: "uppercase",
-// // // // // // // // // // // // // // //                         letterSpacing: "0.04em",
-// // // // // // // // // // // // // // //                         color: "var(--text-secondary)",
-// // // // // // // // // // // // // // //                         marginBottom: 4,
-// // // // // // // // // // // // // // //                       }}
-// // // // // // // // // // // // // // //                     >
-// // // // // // // // // // // // // // //                       {k}
-// // // // // // // // // // // // // // //                     </div>
-// // // // // // // // // // // // // // //                     <div style={{ color: "var(--text)", fontSize: "0.9rem", wordBreak: "break-word" }}>
-// // // // // // // // // // // // // // //                       {typeof v === "object" ? JSON.stringify(v) : String(v)}
-// // // // // // // // // // // // // // //                     </div>
-// // // // // // // // // // // // // // //                   </div>
-// // // // // // // // // // // // // // //                 ))}
-// // // // // // // // // // // // // // //               </div>
-// // // // // // // // // // // // // // //             </>
-// // // // // // // // // // // // // // //           )}
-// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //             {type === "categorie" && (
+// // // // // // // // // // // // // // //               <CategorieSlide
+// // // // // // // // // // // // // // //                 cat={current}
+// // // // // // // // // // // // // // //                 navigate={navigate}
+// // // // // // // // // // // // // // //                 onOpen={() => navigate(`/details/categorie/${current.id}`)}
+// // // // // // // // // // // // // // //               />
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //             {type === "article" && (
+// // // // // // // // // // // // // // //               <ArticleSlide
+// // // // // // // // // // // // // // //                 item={current}
+// // // // // // // // // // // // // // //                 navigate={navigate}
+// // // // // // // // // // // // // // //                 onOpen={() => navigate(`/details/article/${current.id}`)}
+// // // // // // // // // // // // // // //               />
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //             {type === "entrepot" && (
+// // // // // // // // // // // // // // //               <EntrepotSlide
+// // // // // // // // // // // // // // //                 ent={current}
+// // // // // // // // // // // // // // //                 onOpen={() => navigate(`/details/entrepot/${current.id}`)}
+// // // // // // // // // // // // // // //               />
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //             {type === "utilisateur" && (
+// // // // // // // // // // // // // // //               <UserSlide
+// // // // // // // // // // // // // // //                 user={current}
+// // // // // // // // // // // // // // //                 onOpen={() => navigate(`/details/utilisateur/${current.id}`)}
+// // // // // // // // // // // // // // //               />
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //             {type === "mouvement" && (
+// // // // // // // // // // // // // // //               <MouvementSlide
+// // // // // // // // // // // // // // //                 m={current}
+// // // // // // // // // // // // // // //                 onOpen={() => navigate(`/details/mouvement/${current.id}`)}
+// // // // // // // // // // // // // // //               />
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //           </>
+// // // // // // // // // // // // // // //         )}
 
-// // // // // // // // // // // // // // //         {/* Flèche bas */}
-// // // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
-// // // // // // // // // // // // // // //           <button type="button" onClick={next} disabled={!items.length} style={arrowBtn} title="Suivant (↓)">
+// // // // // // // // // // // // // // //         {/* ARROW DOWN */}
+// // // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+// // // // // // // // // // // // // // //           <button
+// // // // // // // // // // // // // // //             type="button"
+// // // // // // // // // // // // // // //             onClick={next}
+// // // // // // // // // // // // // // //             disabled={!items.length}
+// // // // // // // // // // // // // // //             style={arrowBtn}
+// // // // // // // // // // // // // // //             title="Suivant"
+// // // // // // // // // // // // // // //           >
 // // // // // // // // // // // // // // //             <ChevronDown size={28} />
 // // // // // // // // // // // // // // //           </button>
 // // // // // // // // // // // // // // //         </div>
 
-// // // // // // // // // // // // // // //         <p style={{ textAlign: "center", marginTop: 12, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-// // // // // // // // // // // // // // //           Flèches clavier ↑ ↓ ou boutons pour naviguer
-// // // // // // // // // // // // // // //         </p>
+// // // // // // // // // // // // // // //         <Footer />
 // // // // // // // // // // // // // // //       </div>
-// // // // // // // // // // // // // // //       <Footer />
 // // // // // // // // // // // // // // //     </div>
 // // // // // // // // // // // // // // //   );
 // // // // // // // // // // // // // // // }
 
-// // // // // // // // // // // // // // // const iconBox = {
-// // // // // // // // // // // // // // //   width: 48,
-// // // // // // // // // // // // // // //   height: 48,
-// // // // // // // // // // // // // // //   borderRadius: 14,
-// // // // // // // // // // // // // // //   display: "grid",
-// // // // // // // // // // // // // // //   placeItems: "center",
-// // // // // // // // // // // // // // //   background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-// // // // // // // // // // // // // // //   boxShadow: "0 8px 24px var(--glow-color)",
-// // // // // // // // // // // // // // // };
+// // // // // // // // // // // // // // // /* ========== SLIDES ========== */
+// // // // // // // // // // // // // // // function CategorieSlide({ cat, navigate, onOpen }) {
+// // // // // // // // // // // // // // //   const { emoji, name } = parseCategoryName(cat);
+// // // // // // // // // // // // // // //   const imgSrc = toIconSrc(cat.icon);
+// // // // // // // // // // // // // // //   const short =
+// // // // // // // // // // // // // // //     cat.icon && String(cat.icon).trim().length <= 8
+// // // // // // // // // // // // // // //       ? String(cat.icon).trim()
+// // // // // // // // // // // // // // //       : null;
+// // // // // // // // // // // // // // //   const articles = cat._articles || [];
 
-// // // // // // // // // // // // // // // const btnBack = {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <>
+// // // // // // // // // // // // // // //       <GlassCard>
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             display: "flex",
+// // // // // // // // // // // // // // //             gap: "1.25rem",
+// // // // // // // // // // // // // // //             padding: "1.5rem",
+// // // // // // // // // // // // // // //             alignItems: "center",
+// // // // // // // // // // // // // // //             flexWrap: "wrap",
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               width: 100,
+// // // // // // // // // // // // // // //               height: 100,
+// // // // // // // // // // // // // // //               borderRadius: 22,
+// // // // // // // // // // // // // // //               flexShrink: 0,
+// // // // // // // // // // // // // // //               overflow: "hidden",
+// // // // // // // // // // // // // // //               background:
+// // // // // // // // // // // // // // //                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // // // //               alignItems: "center",
+// // // // // // // // // // // // // // //               justifyContent: "center",
+// // // // // // // // // // // // // // //               boxShadow: "0 10px 28px var(--glow-color)",
+// // // // // // // // // // // // // // //               position: "relative",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 position: "absolute",
+// // // // // // // // // // // // // // //                 top: 8,
+// // // // // // // // // // // // // // //                 left: 12,
+// // // // // // // // // // // // // // //                 width: 22,
+// // // // // // // // // // // // // // //                 height: 10,
+// // // // // // // // // // // // // // //                 borderRadius: "50%",
+// // // // // // // // // // // // // // //                 background: "rgba(255,255,255,0.4)",
+// // // // // // // // // // // // // // //                 transform: "rotate(-20deg)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             />
+// // // // // // // // // // // // // // //             {imgSrc ? (
+// // // // // // // // // // // // // // //               <img
+// // // // // // // // // // // // // // //                 src={imgSrc}
+// // // // // // // // // // // // // // //                 alt=""
+// // // // // // // // // // // // // // //                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
+// // // // // // // // // // // // // // //                 onError={(e) => {
+// // // // // // // // // // // // // // //                   e.currentTarget.style.display = "none";
+// // // // // // // // // // // // // // //                 }}
+// // // // // // // // // // // // // // //               />
+// // // // // // // // // // // // // // //             ) : (
+// // // // // // // // // // // // // // //               <span style={{ fontSize: "2.4rem", lineHeight: 1 }}>
+// // // // // // // // // // // // // // //                 {short || emoji || "📂"}
+// // // // // // // // // // // // // // //               </span>
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <div style={{ flex: 1, minWidth: 160 }}>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //                 fontWeight: 900,
+// // // // // // // // // // // // // // //                 fontSize: "1.45rem",
+// // // // // // // // // // // // // // //                 color: "var(--text)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               {name}
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 marginTop: 10,
+// // // // // // // // // // // // // // //                 display: "flex",
+// // // // // // // // // // // // // // //                 gap: 8,
+// // // // // // // // // // // // // // //                 flexWrap: "wrap",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               <Badge color="#60a5fa">ID #{cat.id}</Badge>
+// // // // // // // // // // // // // // //               <Badge color="#4ade80">
+// // // // // // // // // // // // // // //                 {articles.length} article{articles.length > 1 ? "s" : ""}
+// // // // // // // // // // // // // // //               </Badge>
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //             {cat.description && (
+// // // // // // // // // // // // // // //               <p
+// // // // // // // // // // // // // // //                 style={{
+// // // // // // // // // // // // // // //                   marginTop: 12,
+// // // // // // // // // // // // // // //                   color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //                   fontSize: "0.9rem",
+// // // // // // // // // // // // // // //                   lineHeight: 1.45,
+// // // // // // // // // // // // // // //                 }}
+// // // // // // // // // // // // // // //               >
+// // // // // // // // // // // // // // //                 {cat.description}
+// // // // // // // // // // // // // // //               </p>
+// // // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // // // //             <button type="button" onClick={onOpen} style={btnOpen}>
+// // // // // // // // // // // // // // //               <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // // // //             </button>
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //       </GlassCard>
+
+// // // // // // // // // // // // // // //       <SectionTitle icon={<Package size={16} />} title="Articles de cette catégorie" />
+// // // // // // // // // // // // // // //       <GlassCard>
+// // // // // // // // // // // // // // //         <div style={{ padding: "1rem 1.25rem", overflowX: "auto" }}>
+// // // // // // // // // // // // // // //           {articles.length === 0 ? (
+// // // // // // // // // // // // // // //             <EmptyLine text="Aucun article dans cette catégorie." />
+// // // // // // // // // // // // // // //           ) : (
+// // // // // // // // // // // // // // //             <table style={tableStyle}>
+// // // // // // // // // // // // // // //               <thead>
+// // // // // // // // // // // // // // //                 <tr>
+// // // // // // // // // // // // // // //                   <th style={thStyle}></th>
+// // // // // // // // // // // // // // //                   <th style={thStyle}>Article</th>
+// // // // // // // // // // // // // // //                   <th style={thStyle}>Marque / modèle</th>
+// // // // // // // // // // // // // // //                 </tr>
+// // // // // // // // // // // // // // //               </thead>
+// // // // // // // // // // // // // // //               <tbody>
+// // // // // // // // // // // // // // //                 {articles.slice(0, 12).map((it) => {
+// // // // // // // // // // // // // // //                   const im = getArticleImageSrc(it);
+// // // // // // // // // // // // // // //                   return (
+// // // // // // // // // // // // // // //                     <tr
+// // // // // // // // // // // // // // //                       key={it.id}
+// // // // // // // // // // // // // // //                       style={{ cursor: "pointer" }}
+// // // // // // // // // // // // // // //                       onClick={() => navigate(`/details/article/${it.id}`)}
+// // // // // // // // // // // // // // //                     >
+// // // // // // // // // // // // // // //                       <td style={tdStyle}>
+// // // // // // // // // // // // // // //                         {im ? (
+// // // // // // // // // // // // // // //                           <img
+// // // // // // // // // // // // // // //                             src={im}
+// // // // // // // // // // // // // // //                             alt=""
+// // // // // // // // // // // // // // //                             style={{
+// // // // // // // // // // // // // // //                               width: 40,
+// // // // // // // // // // // // // // //                               height: 40,
+// // // // // // // // // // // // // // //                               objectFit: "cover",
+// // // // // // // // // // // // // // //                               borderRadius: 8,
+// // // // // // // // // // // // // // //                             }}
+// // // // // // // // // // // // // // //                             onError={(e) => {
+// // // // // // // // // // // // // // //                               e.currentTarget.style.display = "none";
+// // // // // // // // // // // // // // //                             }}
+// // // // // // // // // // // // // // //                           />
+// // // // // // // // // // // // // // //                         ) : (
+// // // // // // // // // // // // // // //                           <Package size={18} color="var(--gradient-start)" />
+// // // // // // // // // // // // // // //                         )}
+// // // // // // // // // // // // // // //                       </td>
+// // // // // // // // // // // // // // //                       <td style={{ ...tdStyle, fontWeight: 700 }}>{it.name}</td>
+// // // // // // // // // // // // // // //                       <td style={tdStyle}>
+// // // // // // // // // // // // // // //                         {[it.mark, it.modele].filter(Boolean).join(" · ") || "—"}
+// // // // // // // // // // // // // // //                       </td>
+// // // // // // // // // // // // // // //                     </tr>
+// // // // // // // // // // // // // // //                   );
+// // // // // // // // // // // // // // //                 })}
+// // // // // // // // // // // // // // //               </tbody>
+// // // // // // // // // // // // // // //             </table>
+// // // // // // // // // // // // // // //           )}
+// // // // // // // // // // // // // // //           {articles.length > 12 && (
+// // // // // // // // // // // // // // //             <p
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 margin: "0.75rem 0 0",
+// // // // // // // // // // // // // // //                 fontSize: "0.8rem",
+// // // // // // // // // // // // // // //                 color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //                 textAlign: "center",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               + {articles.length - 12} autres — ouvrir la fiche complète
+// // // // // // // // // // // // // // //             </p>
+// // // // // // // // // // // // // // //           )}
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //       </GlassCard>
+// // // // // // // // // // // // // // //     </>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function ArticleSlide({ item, onOpen }) {
+// // // // // // // // // // // // // // //   const im = getArticleImageSrc(item);
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <GlassCard>
+// // // // // // // // // // // // // // //       <div
+// // // // // // // // // // // // // // //         style={{
+// // // // // // // // // // // // // // //           display: "flex",
+// // // // // // // // // // // // // // //           gap: "1.25rem",
+// // // // // // // // // // // // // // //           padding: "1.5rem",
+// // // // // // // // // // // // // // //           alignItems: "center",
+// // // // // // // // // // // // // // //           flexWrap: "wrap",
+// // // // // // // // // // // // // // //         }}
+// // // // // // // // // // // // // // //       >
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             width: 120,
+// // // // // // // // // // // // // // //             height: 120,
+// // // // // // // // // // // // // // //             borderRadius: 22,
+// // // // // // // // // // // // // // //             overflow: "hidden",
+// // // // // // // // // // // // // // //             flexShrink: 0,
+// // // // // // // // // // // // // // //             background: "var(--glass-bg)",
+// // // // // // // // // // // // // // //             border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // //             display: "flex",
+// // // // // // // // // // // // // // //             alignItems: "center",
+// // // // // // // // // // // // // // //             justifyContent: "center",
+// // // // // // // // // // // // // // //             boxShadow: "0 10px 28px rgba(0,0,0,.12)",
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           {im ? (
+// // // // // // // // // // // // // // //             <img
+// // // // // // // // // // // // // // //               src={im}
+// // // // // // // // // // // // // // //               alt=""
+// // // // // // // // // // // // // // //               style={{ width: "100%", height: "100%", objectFit: "cover" }}
+// // // // // // // // // // // // // // //               onError={(e) => {
+// // // // // // // // // // // // // // //                 e.currentTarget.style.display = "none";
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             />
+// // // // // // // // // // // // // // //           ) : (
+// // // // // // // // // // // // // // //             <ImageIcon size={36} color="var(--gradient-start)" />
+// // // // // // // // // // // // // // //           )}
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //         <div style={{ flex: 1, minWidth: 180 }}>
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //               fontWeight: 900,
+// // // // // // // // // // // // // // //               fontSize: "1.35rem",
+// // // // // // // // // // // // // // //               color: "var(--text)",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             {designation(item)}
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               marginTop: 10,
+// // // // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // // // //               gap: 8,
+// // // // // // // // // // // // // // //               flexWrap: "wrap",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <Badge color="var(--gradient-start)">ID #{item.id}</Badge>
+// // // // // // // // // // // // // // //             <Badge color="#60a5fa">{item._catName || "—"}</Badge>
+// // // // // // // // // // // // // // //             <Badge color="#4ade80">
+// // // // // // // // // // // // // // //               <Boxes size={12} style={{ marginRight: 4 }} />
+// // // // // // // // // // // // // // //               {convertirQuantite(item.stockReel, item)}
+// // // // // // // // // // // // // // //             </Badge>
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <InfoGrid
+// // // // // // // // // // // // // // //             rows={[
+// // // // // // // // // // // // // // //               { icon: Hash, label: "Prix vente", value: `${item.sale_price_fc ?? "—"} FC` },
+// // // // // // // // // // // // // // //               { icon: Tag, label: "Catégorie", value: item._catName || "—" },
+// // // // // // // // // // // // // // //               { icon: Info, label: "Niveau", value: item.level ?? "—" },
+// // // // // // // // // // // // // // //             ]}
+// // // // // // // // // // // // // // //           />
+// // // // // // // // // // // // // // //           <button type="button" onClick={onOpen} style={btnOpen}>
+// // // // // // // // // // // // // // //             <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // // // //           </button>
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //       </div>
+// // // // // // // // // // // // // // //     </GlassCard>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function EntrepotSlide({ ent, onOpen }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <GlassCard>
+// // // // // // // // // // // // // // //       <div style={{ padding: "1.5rem" }}>
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             display: "flex",
+// // // // // // // // // // // // // // //             gap: 14,
+// // // // // // // // // // // // // // //             alignItems: "center",
+// // // // // // // // // // // // // // //             marginBottom: 12,
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               width: 72,
+// // // // // // // // // // // // // // //               height: 72,
+// // // // // // // // // // // // // // //               borderRadius: 18,
+// // // // // // // // // // // // // // //               background:
+// // // // // // // // // // // // // // //                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // // // //               alignItems: "center",
+// // // // // // // // // // // // // // //               justifyContent: "center",
+// // // // // // // // // // // // // // //               boxShadow: "0 8px 22px var(--glow-color)",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <Warehouse size={32} color="#fff" />
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <div>
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //                 fontWeight: 900,
+// // // // // // // // // // // // // // //                 fontSize: "1.3rem",
+// // // // // // // // // // // // // // //                 color: "var(--text)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               {ent.name || ent.reference || `Entrepôt #${ent.id}`}
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //             <Badge color="#a78bfa">ID #{ent.id}</Badge>
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //         <InfoGrid
+// // // // // // // // // // // // // // //           rows={[
+// // // // // // // // // // // // // // //             {
+// // // // // // // // // // // // // // //               icon: Warehouse,
+// // // // // // // // // // // // // // //               label: "Localisation",
+// // // // // // // // // // // // // // //               value: ent.location || ent.localisation || ent.adresse || "—",
+// // // // // // // // // // // // // // //             },
+// // // // // // // // // // // // // // //             { icon: Hash, label: "Référence", value: ent.reference || "—" },
+// // // // // // // // // // // // // // //             { icon: Boxes, label: "Capacité", value: ent.capacity ?? "—" },
+// // // // // // // // // // // // // // //             { icon: Info, label: "Description", value: ent.description || "—" },
+// // // // // // // // // // // // // // //           ]}
+// // // // // // // // // // // // // // //         />
+// // // // // // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
+// // // // // // // // // // // // // // //           <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // // // //         </button>
+// // // // // // // // // // // // // // //       </div>
+// // // // // // // // // // // // // // //     </GlassCard>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function UserSlide({ user, onOpen }) {
+// // // // // // // // // // // // // // //   const initials =
+// // // // // // // // // // // // // // //     ((user.first_name || "")[0] || "") + ((user.name || "")[0] || "");
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <GlassCard>
+// // // // // // // // // // // // // // //       <div
+// // // // // // // // // // // // // // //         style={{
+// // // // // // // // // // // // // // //           display: "flex",
+// // // // // // // // // // // // // // //           gap: "1.2rem",
+// // // // // // // // // // // // // // //           padding: "1.5rem",
+// // // // // // // // // // // // // // //           alignItems: "center",
+// // // // // // // // // // // // // // //           flexWrap: "wrap",
+// // // // // // // // // // // // // // //         }}
+// // // // // // // // // // // // // // //       >
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             width: 80,
+// // // // // // // // // // // // // // //             height: 80,
+// // // // // // // // // // // // // // //             borderRadius: "50%",
+// // // // // // // // // // // // // // //             background:
+// // // // // // // // // // // // // // //               "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // // // //             display: "flex",
+// // // // // // // // // // // // // // //             alignItems: "center",
+// // // // // // // // // // // // // // //             justifyContent: "center",
+// // // // // // // // // // // // // // //             fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //             fontWeight: 900,
+// // // // // // // // // // // // // // //             fontSize: "1.4rem",
+// // // // // // // // // // // // // // //             color: "#fff",
+// // // // // // // // // // // // // // //             boxShadow: "0 0 22px var(--glow-color)",
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           {initials || "?"}
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //         <div>
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //               fontWeight: 900,
+// // // // // // // // // // // // // // //               fontSize: "1.3rem",
+// // // // // // // // // // // // // // //               color: "var(--text)",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             {user.first_name} {user.name}
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <div style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
+// // // // // // // // // // // // // // //             {user.role || "Utilisateur"} · {user.email || "—"}
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+// // // // // // // // // // // // // // //             <Badge color="#fbbf24">ID #{user.id}</Badge>
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //           <button type="button" onClick={onOpen} style={btnOpen}>
+// // // // // // // // // // // // // // //             <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // // // //           </button>
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //       </div>
+// // // // // // // // // // // // // // //     </GlassCard>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function MouvementSlide({ m, onOpen }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <GlassCard>
+// // // // // // // // // // // // // // //       <div style={{ padding: "1.5rem" }}>
+// // // // // // // // // // // // // // //         <div
+// // // // // // // // // // // // // // //           style={{
+// // // // // // // // // // // // // // //             fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //             fontWeight: 900,
+// // // // // // // // // // // // // // //             fontSize: "1.25rem",
+// // // // // // // // // // // // // // //             color: "var(--text)",
+// // // // // // // // // // // // // // //             marginBottom: 10,
+// // // // // // // // // // // // // // //           }}
+// // // // // // // // // // // // // // //         >
+// // // // // // // // // // // // // // //           {m.type || "Mouvement"} · {String(m.date || m.created_at || "").slice(0, 10)}
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+// // // // // // // // // // // // // // //           <Badge color="#34d399">{m.type || "—"}</Badge>
+// // // // // // // // // // // // // // //           <Badge color="#60a5fa">Qté {m.qty ?? "—"}</Badge>
+// // // // // // // // // // // // // // //           <Badge color="var(--text-secondary)">Article #{m.item_id}</Badge>
+// // // // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // // // //         <InfoGrid
+// // // // // // // // // // // // // // //           rows={[
+// // // // // // // // // // // // // // //             { icon: Package, label: "Article ID", value: m.item_id ?? "—" },
+// // // // // // // // // // // // // // //             { icon: Warehouse, label: "Entrepôt", value: m.entrepot_id ?? "—" },
+// // // // // // // // // // // // // // //             { icon: Info, label: "Nature", value: m.nature || "—" },
+// // // // // // // // // // // // // // //           ]}
+// // // // // // // // // // // // // // //         />
+// // // // // // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
+// // // // // // // // // // // // // // //           <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // // // //         </button>
+// // // // // // // // // // // // // // //       </div>
+// // // // // // // // // // // // // // //     </GlassCard>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // /* ========== UI ATOMS (comme Details) ========== */
+// // // // // // // // // // // // // // // function GlassCard({ children }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <div
+// // // // // // // // // // // // // // //       style={{
+// // // // // // // // // // // // // // //         position: "relative",
+// // // // // // // // // // // // // // //         borderRadius: 24,
+// // // // // // // // // // // // // // //         background: "var(--card-bg)",
+// // // // // // // // // // // // // // //         backdropFilter: "blur(35px)",
+// // // // // // // // // // // // // // //         border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // //         overflow: "hidden",
+// // // // // // // // // // // // // // //         boxShadow: "0 16px 40px rgba(0,0,0,.14)",
+// // // // // // // // // // // // // // //         marginBottom: "1rem",
+// // // // // // // // // // // // // // //       }}
+// // // // // // // // // // // // // // //     >
+// // // // // // // // // // // // // // //       {children}
+// // // // // // // // // // // // // // //     </div>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function SectionTitle({ icon, title }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <div
+// // // // // // // // // // // // // // //       style={{
+// // // // // // // // // // // // // // //         display: "flex",
+// // // // // // // // // // // // // // //         alignItems: "center",
+// // // // // // // // // // // // // // //         gap: 8,
+// // // // // // // // // // // // // // //         margin: "1.1rem 0 0.65rem",
+// // // // // // // // // // // // // // //         color: "var(--gradient-start)",
+// // // // // // // // // // // // // // //         fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // // // //         fontWeight: 800,
+// // // // // // // // // // // // // // //         fontSize: "0.95rem",
+// // // // // // // // // // // // // // //       }}
+// // // // // // // // // // // // // // //     >
+// // // // // // // // // // // // // // //       {icon}
+// // // // // // // // // // // // // // //       {title}
+// // // // // // // // // // // // // // //     </div>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function Badge({ children, color }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <span
+// // // // // // // // // // // // // // //       style={{
+// // // // // // // // // // // // // // //         display: "inline-flex",
+// // // // // // // // // // // // // // //         alignItems: "center",
+// // // // // // // // // // // // // // //         padding: "0.28rem 0.7rem",
+// // // // // // // // // // // // // // //         borderRadius: 999,
+// // // // // // // // // // // // // // //         fontSize: "0.72rem",
+// // // // // // // // // // // // // // //         fontWeight: 700,
+// // // // // // // // // // // // // // //         color,
+// // // // // // // // // // // // // // //         background: `color-mix(in srgb, ${color} 14%, transparent)`,
+// // // // // // // // // // // // // // //         border: `1px solid color-mix(in srgb, ${color} 35%, transparent)`,
+// // // // // // // // // // // // // // //       }}
+// // // // // // // // // // // // // // //     >
+// // // // // // // // // // // // // // //       {children}
+// // // // // // // // // // // // // // //     </span>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function InfoGrid({ rows }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <div
+// // // // // // // // // // // // // // //       style={{
+// // // // // // // // // // // // // // //         display: "grid",
+// // // // // // // // // // // // // // //         gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+// // // // // // // // // // // // // // //         gap: "0.75rem",
+// // // // // // // // // // // // // // //         marginTop: 14,
+// // // // // // // // // // // // // // //       }}
+// // // // // // // // // // // // // // //     >
+// // // // // // // // // // // // // // //       {rows.map((r, i) => {
+// // // // // // // // // // // // // // //         const Icon = r.icon;
+// // // // // // // // // // // // // // //         return (
+// // // // // // // // // // // // // // //           <div
+// // // // // // // // // // // // // // //             key={i}
+// // // // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // // // //               gap: 10,
+// // // // // // // // // // // // // // //               padding: "0.7rem 0.8rem",
+// // // // // // // // // // // // // // //               borderRadius: 14,
+// // // // // // // // // // // // // // //               background: "var(--glass-bg)",
+// // // // // // // // // // // // // // //               border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // //             }}
+// // // // // // // // // // // // // // //           >
+// // // // // // // // // // // // // // //             <div
+// // // // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // // // //                 width: 34,
+// // // // // // // // // // // // // // //                 height: 34,
+// // // // // // // // // // // // // // //                 borderRadius: 10,
+// // // // // // // // // // // // // // //                 display: "flex",
+// // // // // // // // // // // // // // //                 alignItems: "center",
+// // // // // // // // // // // // // // //                 justifyContent: "center",
+// // // // // // // // // // // // // // //                 background:
+// // // // // // // // // // // // // // //                   "linear-gradient(145deg, color-mix(in srgb, var(--gradient-start) 55%, #fff 5%), color-mix(in srgb, var(--gradient-start) 25%, transparent))",
+// // // // // // // // // // // // // // //                 color: "#fff",
+// // // // // // // // // // // // // // //                 flexShrink: 0,
+// // // // // // // // // // // // // // //                 boxShadow: "0 4px 12px var(--glow-color)",
+// // // // // // // // // // // // // // //               }}
+// // // // // // // // // // // // // // //             >
+// // // // // // // // // // // // // // //               <Icon size={14} />
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //             <div style={{ minWidth: 0 }}>
+// // // // // // // // // // // // // // //               <div
+// // // // // // // // // // // // // // //                 style={{
+// // // // // // // // // // // // // // //                   fontSize: "0.68rem",
+// // // // // // // // // // // // // // //                   fontWeight: 700,
+// // // // // // // // // // // // // // //                   textTransform: "uppercase",
+// // // // // // // // // // // // // // //                   color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //                 }}
+// // // // // // // // // // // // // // //               >
+// // // // // // // // // // // // // // //                 {r.label}
+// // // // // // // // // // // // // // //               </div>
+// // // // // // // // // // // // // // //               <div
+// // // // // // // // // // // // // // //                 style={{
+// // // // // // // // // // // // // // //                   fontSize: "0.88rem",
+// // // // // // // // // // // // // // //                   fontWeight: 600,
+// // // // // // // // // // // // // // //                   color: "var(--text)",
+// // // // // // // // // // // // // // //                   marginTop: 2,
+// // // // // // // // // // // // // // //                   wordBreak: "break-word",
+// // // // // // // // // // // // // // //                 }}
+// // // // // // // // // // // // // // //               >
+// // // // // // // // // // // // // // //                 {r.value}
+// // // // // // // // // // // // // // //               </div>
+// // // // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // // // //         );
+// // // // // // // // // // // // // // //       })}
+// // // // // // // // // // // // // // //     </div>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // function EmptyLine({ text }) {
+// // // // // // // // // // // // // // //   return (
+// // // // // // // // // // // // // // //     <div
+// // // // // // // // // // // // // // //       style={{
+// // // // // // // // // // // // // // //         padding: "1.2rem",
+// // // // // // // // // // // // // // //         textAlign: "center",
+// // // // // // // // // // // // // // //         color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //         fontSize: "0.88rem",
+// // // // // // // // // // // // // // //       }}
+// // // // // // // // // // // // // // //     >
+// // // // // // // // // // // // // // //       {text}
+// // // // // // // // // // // // // // //     </div>
+// // // // // // // // // // // // // // //   );
+// // // // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // // // const topBtn = {
 // // // // // // // // // // // // // // //   display: "inline-flex",
 // // // // // // // // // // // // // // //   alignItems: "center",
-// // // // // // // // // // // // // // //   gap: 8,
+// // // // // // // // // // // // // // //   gap: 6,
 // // // // // // // // // // // // // // //   padding: "0.45rem 0.85rem",
 // // // // // // // // // // // // // // //   borderRadius: 12,
 // // // // // // // // // // // // // // //   border: "1px solid var(--glass-border)",
 // // // // // // // // // // // // // // //   background: "var(--glass-bg)",
-// // // // // // // // // // // // // // //   color: "var(--text)",
+// // // // // // // // // // // // // // //   color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //   fontSize: "0.8rem",
+// // // // // // // // // // // // // // //   fontWeight: 600,
 // // // // // // // // // // // // // // //   cursor: "pointer",
+// // // // // // // // // // // // // // //   backdropFilter: "blur(12px)",
 // // // // // // // // // // // // // // // };
 
 // // // // // // // // // // // // // // // const arrowBtn = {
@@ -285,26 +1631,60 @@
 // // // // // // // // // // // // // // //   height: 52,
 // // // // // // // // // // // // // // //   borderRadius: 16,
 // // // // // // // // // // // // // // //   border: "1px solid var(--glass-border)",
-// // // // // // // // // // // // // // //   background: "var(--glass-bg)",
+// // // // // // // // // // // // // // //   background: "var(--card-bg)",
 // // // // // // // // // // // // // // //   color: "var(--text)",
 // // // // // // // // // // // // // // //   cursor: "pointer",
 // // // // // // // // // // // // // // //   display: "grid",
 // // // // // // // // // // // // // // //   placeItems: "center",
+// // // // // // // // // // // // // // //   boxShadow: "0 8px 24px rgba(0,0,0,.1)",
 // // // // // // // // // // // // // // // };
 
-// // // // // // // // // // // // // // // const btnGhost = {
+// // // // // // // // // // // // // // // const btnOpen = {
+// // // // // // // // // // // // // // //   marginTop: 14,
 // // // // // // // // // // // // // // //   display: "inline-flex",
 // // // // // // // // // // // // // // //   alignItems: "center",
-// // // // // // // // // // // // // // //   gap: 6,
-// // // // // // // // // // // // // // //   padding: "0.4rem 0.75rem",
-// // // // // // // // // // // // // // //   borderRadius: 10,
-// // // // // // // // // // // // // // //   border: "1px solid var(--glass-border)",
-// // // // // // // // // // // // // // //   background: "transparent",
-// // // // // // // // // // // // // // //   color: "var(--text)",
-// // // // // // // // // // // // // // //   fontSize: "0.8rem",
-// // // // // // // // // // // // // // //   fontWeight: 600,
+// // // // // // // // // // // // // // //   gap: 8,
+// // // // // // // // // // // // // // //   padding: "0.55rem 1rem",
+// // // // // // // // // // // // // // //   borderRadius: 12,
+// // // // // // // // // // // // // // //   border: "none",
+// // // // // // // // // // // // // // //   background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // // // //   color: "#fff",
+// // // // // // // // // // // // // // //   fontWeight: 700,
+// // // // // // // // // // // // // // //   fontSize: "0.85rem",
 // // // // // // // // // // // // // // //   cursor: "pointer",
+// // // // // // // // // // // // // // //   boxShadow: "0 8px 22px var(--glow-color)",
 // // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // const tableStyle = {
+// // // // // // // // // // // // // // //   width: "100%",
+// // // // // // // // // // // // // // //   borderCollapse: "collapse",
+// // // // // // // // // // // // // // //   fontSize: "0.88rem",
+// // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // const thStyle = {
+// // // // // // // // // // // // // // //   textAlign: "left",
+// // // // // // // // // // // // // // //   padding: "0.55rem 0.6rem",
+// // // // // // // // // // // // // // //   borderBottom: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // //   color: "var(--text-secondary)",
+// // // // // // // // // // // // // // //   fontSize: "0.72rem",
+// // // // // // // // // // // // // // //   fontWeight: 700,
+// // // // // // // // // // // // // // //   textTransform: "uppercase",
+// // // // // // // // // // // // // // //   letterSpacing: "0.04em",
+// // // // // // // // // // // // // // // };
+
+// // // // // // // // // // // // // // // const tdStyle = {
+// // // // // // // // // // // // // // //   padding: "0.65rem 0.6rem",
+// // // // // // // // // // // // // // //   borderBottom: "1px solid var(--glass-border)",
+// // // // // // // // // // // // // // //   color: "var(--text)",
+// // // // // // // // // // // // // // //   verticalAlign: "middle",
+// // // // // // // // // // // // // // // };
+
+
+
+
+
+
+
 
 
 // // // // // // // // // // // // // // /**
@@ -536,6 +1916,50 @@
 // // // // // // // // // // // // // //   return window.jspdf.jsPDF;
 // // // // // // // // // // // // // // }
 
+// // // // // // // // // // // // // // /** Charge une image (URL relative/absolue/data) en dataURL pour jsPDF */
+// // // // // // // // // // // // // // function loadImageAsDataUrl(src) {
+// // // // // // // // // // // // // //   return new Promise((resolve) => {
+// // // // // // // // // // // // // //     if (!src) {
+// // // // // // // // // // // // // //       resolve(null);
+// // // // // // // // // // // // // //       return;
+// // // // // // // // // // // // // //     }
+// // // // // // // // // // // // // //     if (String(src).startsWith("data:")) {
+// // // // // // // // // // // // // //       resolve(src);
+// // // // // // // // // // // // // //       return;
+// // // // // // // // // // // // // //     }
+// // // // // // // // // // // // // //     const img = new Image();
+// // // // // // // // // // // // // //     img.crossOrigin = "anonymous";
+// // // // // // // // // // // // // //     img.onload = () => {
+// // // // // // // // // // // // // //       try {
+// // // // // // // // // // // // // //         const canvas = document.createElement("canvas");
+// // // // // // // // // // // // // //         const max = 320;
+// // // // // // // // // // // // // //         let w = img.naturalWidth || img.width;
+// // // // // // // // // // // // // //         let h = img.naturalHeight || img.height;
+// // // // // // // // // // // // // //         if (w > max || h > max) {
+// // // // // // // // // // // // // //           const r = Math.min(max / w, max / h);
+// // // // // // // // // // // // // //           w = Math.round(w * r);
+// // // // // // // // // // // // // //           h = Math.round(h * r);
+// // // // // // // // // // // // // //         }
+// // // // // // // // // // // // // //         canvas.width = w;
+// // // // // // // // // // // // // //         canvas.height = h;
+// // // // // // // // // // // // // //         const ctx = canvas.getContext("2d");
+// // // // // // // // // // // // // //         ctx.fillStyle = "#ffffff";
+// // // // // // // // // // // // // //         ctx.fillRect(0, 0, w, h);
+// // // // // // // // // // // // // //         ctx.drawImage(img, 0, 0, w, h);
+// // // // // // // // // // // // // //         resolve(canvas.toDataURL("image/jpeg", 0.85));
+// // // // // // // // // // // // // //       } catch {
+// // // // // // // // // // // // // //         resolve(null);
+// // // // // // // // // // // // // //       }
+// // // // // // // // // // // // // //     };
+// // // // // // // // // // // // // //     img.onerror = () => resolve(null);
+// // // // // // // // // // // // // //     try {
+// // // // // // // // // // // // // //       img.src = new URL(src, window.location.origin).href;
+// // // // // // // // // // // // // //     } catch {
+// // // // // // // // // // // // // //       img.src = src;
+// // // // // // // // // // // // // //     }
+// // // // // // // // // // // // // //   });
+// // // // // // // // // // // // // // }
+
 // // // // // // // // // // // // // // const TYPE_META = {
 // // // // // // // // // // // // // //   categorie: { label: "Catégorie", icon: Tag, color: "#60a5fa", badge: "CATÉGORIE" },
 // // // // // // // // // // // // // //   article: { label: "Article", icon: Package, color: "var(--gradient-start)", badge: "ARTICLE" },
@@ -705,77 +2129,156 @@
 // // // // // // // // // // // // // //   );
 
 // // // // // // // // // // // // // //   const handlePdf = useCallback(async () => {
-// // // // // // // // // // // // // //     if (!current || pdfBusy) return;
+// // // // // // // // // // // // // //     if (!items.length || pdfBusy) return;
 // // // // // // // // // // // // // //     setPdfBusy(true);
 // // // // // // // // // // // // // //     try {
 // // // // // // // // // // // // // //       const JsPDF = await loadJsPDF();
 // // // // // // // // // // // // // //       const doc = new JsPDF({ unit: "mm", format: "a4" });
 // // // // // // // // // // // // // //       const pageW = doc.internal.pageSize.getWidth();
+// // // // // // // // // // // // // //       const pageH = doc.internal.pageSize.getHeight();
 // // // // // // // // // // // // // //       const margin = 14;
-// // // // // // // // // // // // // //       let y = 30;
+// // // // // // // // // // // // // //       const indigo = [79, 70, 229];
+// // // // // // // // // // // // // //       const slate = [51, 65, 85];
+// // // // // // // // // // // // // //       const muted = [100, 116, 139];
 
-// // // // // // // // // // // // // //       doc.setFillColor(79, 70, 229);
-// // // // // // // // // // // // // //       doc.rect(0, 0, pageW, 22, "F");
+// // // // // // // // // // // // // //       const ensure = (need = 12) => {
+// // // // // // // // // // // // // //         if (y + need > pageH - 16) {
+// // // // // // // // // // // // // //           doc.addPage();
+// // // // // // // // // // // // // //           y = margin;
+// // // // // // // // // // // // // //         }
+// // // // // // // // // // // // // //       };
+
+// // // // // // // // // // // // // //       // —— En-tête global ——
+// // // // // // // // // // // // // //       doc.setFillColor(...indigo);
+// // // // // // // // // // // // // //       doc.rect(0, 0, pageW, 26, "F");
+// // // // // // // // // // // // // //       doc.setFillColor(165, 180, 252);
+// // // // // // // // // // // // // //       doc.rect(0, 26, pageW, 1.2, "F");
 // // // // // // // // // // // // // //       doc.setTextColor(255, 255, 255);
-// // // // // // // // // // // // // //       doc.setFontSize(14);
-// // // // // // // // // // // // // //       doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, 14);
-// // // // // // // // // // // // // //       doc.setFontSize(10);
-// // // // // // // // // // // // // //       doc.text(`Detail All · ${meta.label}`, pageW - margin, 14, { align: "right" });
+// // // // // // // // // // // // // //       doc.setFontSize(13);
+// // // // // // // // // // // // // //       doc.setFont(undefined, "bold");
+// // // // // // // // // // // // // //       doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, 12);
+// // // // // // // // // // // // // //       doc.setFontSize(9);
+// // // // // // // // // // // // // //       doc.setFont(undefined, "normal");
+// // // // // // // // // // // // // //       doc.text(
+// // // // // // // // // // // // // //         `Detail All · ${meta.label} · ${items.length} élément(s)`,
+// // // // // // // // // // // // // //         margin,
+// // // // // // // // // // // // // //         20
+// // // // // // // // // // // // // //       );
+// // // // // // // // // // // // // //       doc.text(
+// // // // // // // // // // // // // //         new Date().toLocaleString("fr-FR"),
+// // // // // // // // // // // // // //         pageW - margin,
+// // // // // // // // // // // // // //         20,
+// // // // // // // // // // // // // //         { align: "right" }
+// // // // // // // // // // // // // //       );
 
-// // // // // // // // // // // // // //       doc.setTextColor(30, 41, 59);
-// // // // // // // // // // // // // //       doc.setFontSize(16);
-// // // // // // // // // // // // // //       doc.text(String(titleOf(current)).slice(0, 80), margin, y);
-// // // // // // // // // // // // // //       y += 10;
-// // // // // // // // // // // // // //       doc.setFontSize(10);
-// // // // // // // // // // // // // //       doc.setTextColor(100, 116, 139);
-// // // // // // // // // // // // // //       doc.text(`ID #${current.id} · ${index + 1}/${items.length}`, margin, y);
-// // // // // // // // // // // // // //       y += 12;
+// // // // // // // // // // // // // //       let y = 36;
 
-// // // // // // // // // // // // // //       const lines = [];
-// // // // // // // // // // // // // //       if (type === "categorie") {
-// // // // // // // // // // // // // //         lines.push(`Nom : ${parseCategoryName(current).name}`);
-// // // // // // // // // // // // // //         lines.push(`Description : ${current.description || "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Articles liés : ${(current._articles || []).length}`);
-// // // // // // // // // // // // // //       } else if (type === "article") {
-// // // // // // // // // // // // // //         lines.push(`Désignation : ${designation(current)}`);
-// // // // // // // // // // // // // //         lines.push(`Catégorie : ${current._catName || "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Stock : ${convertirQuantite(current.stockReel, current)}`);
-// // // // // // // // // // // // // //         lines.push(`Prix vente : ${current.sale_price_fc ?? "—"} FC`);
-// // // // // // // // // // // // // //       } else if (type === "entrepot") {
-// // // // // // // // // // // // // //         lines.push(`Nom : ${current.name || current.reference || "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Localisation : ${current.location || current.localisation || "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Capacité : ${current.capacity ?? "—"}`);
-// // // // // // // // // // // // // //       } else if (type === "utilisateur") {
-// // // // // // // // // // // // // //         lines.push(`Nom : ${titleOf(current)}`);
-// // // // // // // // // // // // // //         lines.push(`Email : ${current.email || "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Rôle : ${current.role || "—"}`);
-// // // // // // // // // // // // // //       } else if (type === "mouvement") {
-// // // // // // // // // // // // // //         lines.push(`Type : ${current.type || "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Qté : ${current.qty ?? "—"}`);
-// // // // // // // // // // // // // //         lines.push(`Date : ${String(current.date || current.created_at || "—").slice(0, 16)}`);
+// // // // // // // // // // // // // //       for (let i = 0; i < items.length; i++) {
+// // // // // // // // // // // // // //         const row = items[i];
+// // // // // // // // // // // // // //         ensure(42);
+
+// // // // // // // // // // // // // //         // Bandeau fiche
+// // // // // // // // // // // // // //         doc.setFillColor(241, 245, 249);
+// // // // // // // // // // // // // //         doc.roundedRect(margin, y - 4, pageW - margin * 2, 8, 2, 2, "F");
+// // // // // // // // // // // // // //         doc.setTextColor(...indigo);
+// // // // // // // // // // // // // //         doc.setFontSize(11);
+// // // // // // // // // // // // // //         doc.setFont(undefined, "bold");
+// // // // // // // // // // // // // //         doc.text(`${i + 1}/${items.length} · ${String(titleOf(row)).slice(0, 60)}`, margin + 2, y + 2);
+// // // // // // // // // // // // // //         y += 12;
+
+// // // // // // // // // // // // // //         // Image selon type
+// // // // // // // // // // // // // //         let imgSrc = null;
+// // // // // // // // // // // // // //         if (type === "categorie") imgSrc = toIconSrc(row.icon);
+// // // // // // // // // // // // // //         if (type === "article") imgSrc = getArticleImageSrc(row);
+// // // // // // // // // // // // // //         if (imgSrc) {
+// // // // // // // // // // // // // //           const dataUrl = await loadImageAsDataUrl(imgSrc);
+// // // // // // // // // // // // // //           if (dataUrl) {
+// // // // // // // // // // // // // //             ensure(32);
+// // // // // // // // // // // // // //             try {
+// // // // // // // // // // // // // //               const fmt = dataUrl.includes("png") ? "PNG" : "JPEG";
+// // // // // // // // // // // // // //               doc.addImage(dataUrl, fmt, margin, y, 22, 22);
+// // // // // // // // // // // // // //             } catch {
+// // // // // // // // // // // // // //               /* ignore image errors */
+// // // // // // // // // // // // // //             }
+// // // // // // // // // // // // // //           }
+// // // // // // // // // // // // // //         }
+
+// // // // // // // // // // // // // //         const textX = imgSrc ? margin + 28 : margin;
+// // // // // // // // // // // // // //         doc.setTextColor(...slate);
+// // // // // // // // // // // // // //         doc.setFontSize(10);
+// // // // // // // // // // // // // //         doc.setFont(undefined, "bold");
+// // // // // // // // // // // // // //         doc.text(String(titleOf(row)).slice(0, 70), textX, y + 6);
+// // // // // // // // // // // // // //         doc.setFont(undefined, "normal");
+// // // // // // // // // // // // // //         doc.setFontSize(9);
+// // // // // // // // // // // // // //         doc.setTextColor(...muted);
+
+// // // // // // // // // // // // // //         const lines = [];
+// // // // // // // // // // // // // //         if (type === "categorie") {
+// // // // // // // // // // // // // //           lines.push(`ID #${row.id}`);
+// // // // // // // // // // // // // //           lines.push(`Description : ${(row.description || "—").toString().slice(0, 90)}`);
+// // // // // // // // // // // // // //           lines.push(`Articles liés : ${(row._articles || []).length}`);
+// // // // // // // // // // // // // //         } else if (type === "article") {
+// // // // // // // // // // // // // //           lines.push(`ID #${row.id} · Catégorie : ${row._catName || "—"}`);
+// // // // // // // // // // // // // //           lines.push(`Stock : ${convertirQuantite(row.stockReel, row)}`);
+// // // // // // // // // // // // // //           lines.push(`Prix vente : ${row.sale_price_fc ?? "—"} FC`);
+// // // // // // // // // // // // // //         } else if (type === "entrepot") {
+// // // // // // // // // // // // // //           lines.push(`ID #${row.id}`);
+// // // // // // // // // // // // // //           lines.push(`Localisation : ${row.location || row.localisation || row.adresse || "—"}`);
+// // // // // // // // // // // // // //           lines.push(`Référence : ${row.reference || "—"} · Capacité : ${row.capacity ?? "—"}`);
+// // // // // // // // // // // // // //         } else if (type === "utilisateur") {
+// // // // // // // // // // // // // //           lines.push(`ID #${row.id}`);
+// // // // // // // // // // // // // //           lines.push(`Email : ${row.email || "—"}`);
+// // // // // // // // // // // // // //           lines.push(`Rôle : ${row.role || "—"}`);
+// // // // // // // // // // // // // //         } else if (type === "mouvement") {
+// // // // // // // // // // // // // //           lines.push(`ID #${row.id} · Article #${row.item_id ?? "—"}`);
+// // // // // // // // // // // // // //           lines.push(`Type : ${row.type || "—"} · Qté : ${row.qty ?? "—"}`);
+// // // // // // // // // // // // // //           lines.push(`Date : ${String(row.date || row.created_at || "—").slice(0, 16)}`);
+// // // // // // // // // // // // // //           lines.push(`Nature : ${row.nature || "—"}`);
+// // // // // // // // // // // // // //         }
+
+// // // // // // // // // // // // // //         let ty = y + 12;
+// // // // // // // // // // // // // //         lines.forEach((line) => {
+// // // // // // // // // // // // // //           ensure(7);
+// // // // // // // // // // // // // //           if (ty > pageH - 16) {
+// // // // // // // // // // // // // //             doc.addPage();
+// // // // // // // // // // // // // //             ty = margin;
+// // // // // // // // // // // // // //           }
+// // // // // // // // // // // // // //           doc.text(String(line).slice(0, 95), textX, ty);
+// // // // // // // // // // // // // //           ty += 5.5;
+// // // // // // // // // // // // // //         });
+
+// // // // // // // // // // // // // //         y = Math.max(ty, y + (imgSrc ? 28 : 8)) + 6;
+
+// // // // // // // // // // // // // //         // Ligne séparatrice
+// // // // // // // // // // // // // //         ensure(4);
+// // // // // // // // // // // // // //         doc.setDrawColor(226, 232, 240);
+// // // // // // // // // // // // // //         doc.setLineWidth(0.3);
+// // // // // // // // // // // // // //         doc.line(margin, y, pageW - margin, y);
+// // // // // // // // // // // // // //         y += 8;
 // // // // // // // // // // // // // //       }
 
-// // // // // // // // // // // // // //       doc.setTextColor(30, 41, 59);
-// // // // // // // // // // // // // //       doc.setFontSize(11);
-// // // // // // // // // // // // // //       lines.forEach((line) => {
-// // // // // // // // // // // // // //         doc.text(line, margin, y);
-// // // // // // // // // // // // // //         y += 7;
-// // // // // // // // // // // // // //       });
+// // // // // // // // // // // // // //       // Pied de page sur dernière page
+// // // // // // // // // // // // // //       const total = doc.internal.getNumberOfPages();
+// // // // // // // // // // // // // //       for (let p = 1; p <= total; p++) {
+// // // // // // // // // // // // // //         doc.setPage(p);
+// // // // // // // // // // // // // //         doc.setFontSize(8);
+// // // // // // // // // // // // // //         doc.setTextColor(148, 163, 184);
+// // // // // // // // // // // // // //         doc.text(
+// // // // // // // // // // // // // //           `${APP_NAME} — Detail All ${meta.label} — page ${p}/${total}`,
+// // // // // // // // // // // // // //           margin,
+// // // // // // // // // // // // // //           pageH - 8
+// // // // // // // // // // // // // //         );
+// // // // // // // // // // // // // //       }
 
-// // // // // // // // // // // // // //       doc.setFontSize(8);
-// // // // // // // // // // // // // //       doc.setTextColor(148, 163, 184);
-// // // // // // // // // // // // // //       doc.text(`Généré le ${new Date().toLocaleString("fr-FR")}`, margin, 287);
-
-// // // // // // // // // // // // // //       doc.save(
-// // // // // // // // // // // // // //         `StockFlow_${type}_${current.id}_${index + 1}.pdf`
-// // // // // // // // // // // // // //       );
+// // // // // // // // // // // // // //       doc.save(`StockFlow_DetailAll_${type}_${items.length}.pdf`);
 // // // // // // // // // // // // // //     } catch (e) {
 // // // // // // // // // // // // // //       console.error(e);
 // // // // // // // // // // // // // //       alert("Export PDF impossible.");
 // // // // // // // // // // // // // //     } finally {
 // // // // // // // // // // // // // //       setPdfBusy(false);
 // // // // // // // // // // // // // //     }
-// // // // // // // // // // // // // //   }, [current, pdfBusy, type, meta.label, titleOf, index, items.length]);
+// // // // // // // // // // // // // //   }, [items, pdfBusy, type, meta.label, titleOf]);
+
 
 // // // // // // // // // // // // // //   const css =
 // // // // // // // // // // // // // //     typeof themeCssVars === "function" ? themeCssVars(theme) : {};
@@ -840,7 +2343,7 @@
 // // // // // // // // // // // // // //             }}
 // // // // // // // // // // // // // //           >
 // // // // // // // // // // // // // //             <Download size={16} />
-// // // // // // // // // // // // // //             {pdfBusy ? "Export…" : "Exporter PDF"}
+// // // // // // // // // // // // // //             {pdfBusy ? "Export…" : `Exporter tout (${items.length || 0})`}
 // // // // // // // // // // // // // //           </button>
 // // // // // // // // // // // // // //         </div>
 
@@ -1684,20 +3187,14 @@
 
 
 
-
-
-
 // // // // // // // // // // // // // /**
-// // // // // // // // // // // // //  * DetailsCarousel — Detail All
-// // // // // // // // // // // // //  * Route : /details/:type/all
-// // // // // // // // // // // // //  *
-// // // // // // // // // // // // //  * Même identité visuelle que Details.jsx :
-// // // // // // // // // // // // //  * ThemeBackground, GlassCard, badges, icônes image catégorie/article,
-// // // // // // // // // // // // //  * flèches ↑↓, fiche complète, export PDF simple de la fiche courante.
+// // // // // // // // // // // // //  * DetailsCarousel — /details-carousel/:type?  ou state { type, key }
+// // // // // // // // // // // // //  * Support : categorie | article | entrepot | utilisateur | mouvement | audit | archive
+// // // // // // // // // // // // //  * Style aligné Details + entrepôt sur mouvements
 // // // // // // // // // // // // //  */
 
-// // // // // // // // // // // // // import { useEffect, useState, useCallback, useMemo } from "react";
-// // // // // // // // // // // // // import { useNavigate, useParams } from "react-router-dom";
+// // // // // // // // // // // // // import { useEffect, useMemo, useState } from "react";
+// // // // // // // // // // // // // import { useNavigate, useParams, useLocation } from "react-router-dom";
 // // // // // // // // // // // // // import {
 // // // // // // // // // // // // //   ArrowLeft,
 // // // // // // // // // // // // //   ChevronUp,
@@ -1707,13 +3204,16 @@
 // // // // // // // // // // // // //   Warehouse,
 // // // // // // // // // // // // //   Users,
 // // // // // // // // // // // // //   ArrowLeftRight,
-// // // // // // // // // // // // //   Layers,
-// // // // // // // // // // // // //   ExternalLink,
-// // // // // // // // // // // // //   Download,
 // // // // // // // // // // // // //   Image as ImageIcon,
+// // // // // // // // // // // // //   Calendar,
 // // // // // // // // // // // // //   Hash,
-// // // // // // // // // // // // //   Info,
 // // // // // // // // // // // // //   Boxes,
+// // // // // // // // // // // // //   Info,
+// // // // // // // // // // // // //   ExternalLink,
+// // // // // // // // // // // // //   Shield,
+// // // // // // // // // // // // //   Layers,
+// // // // // // // // // // // // //   ScrollText,
+// // // // // // // // // // // // //   Clock,
 // // // // // // // // // // // // // } from "lucide-react";
 // // // // // // // // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
 // // // // // // // // // // // // // import Footer from "../components/Footer";
@@ -1724,9 +3224,7 @@
 // // // // // // // // // // // // // const getEntrepots = api.getEntrepots;
 // // // // // // // // // // // // // const getUsers = api.getUsers;
 // // // // // // // // // // // // // const getStocks =
-// // // // // // // // // // // // //   typeof api.getStocks === "function"
-// // // // // // // // // // // // //     ? api.getStocks
-// // // // // // // // // // // // //     : async () => ({ data: [] });
+// // // // // // // // // // // // //   typeof api.getStocks === "function" ? api.getStocks : async () => ({ data: [] });
 // // // // // // // // // // // // // const getMouvementsRecents =
 // // // // // // // // // // // // //   typeof api.getMouvementsRecents === "function"
 // // // // // // // // // // // // //     ? api.getMouvementsRecents
@@ -1737,11 +3235,16 @@
 // // // // // // // // // // // // //     : typeof api.getAjustements === "function"
 // // // // // // // // // // // // //     ? api.getAjustements
 // // // // // // // // // // // // //     : async () => ({ data: [] });
+// // // // // // // // // // // // // const getAuditLogs =
+// // // // // // // // // // // // //   typeof api.getAuditLogs === "function"
+// // // // // // // // // // // // //     ? api.getAuditLogs
+// // // // // // // // // // // // //     : async () => ({ data: [] });
+// // // // // // // // // // // // // const getMouvementsArchives =
+// // // // // // // // // // // // //   typeof api.getMouvementsArchives === "function"
+// // // // // // // // // // // // //     ? api.getMouvementsArchives
+// // // // // // // // // // // // //     : async () => ({ data: [] });
 
-// // // // // // // // // // // // // const APP_NAME = "StockFlow";
-// // // // // // // // // // // // // const COMPANY_NAME = "L'étoile du matin";
-
-// // // // // // // // // // // // // /* ========== HELPERS (alignés Details.jsx) ========== */
+// // // // // // // // // // // // // /* ========== HELPERS ========== */
 // // // // // // // // // // // // // function buildImageFileName(item) {
 // // // // // // // // // // // // //   const parts = [item?.name, item?.mark, item?.modele]
 // // // // // // // // // // // // //     .map((p) => (p || "").toString().trim())
@@ -1798,13 +3301,32 @@
 // // // // // // // // // // // // // }
 
 // // // // // // // // // // // // // function parseCategoryName(cat) {
-// // // // // // // // // // // // //   const raw = cat?.name || "";
-// // // // // // // // // // // // //   const parts = raw.split(" ");
-// // // // // // // // // // // // //   const firstIsEmoji = parts[0] && parts[0].length <= 2;
-// // // // // // // // // // // // //   return {
-// // // // // // // // // // // // //     emoji: firstIsEmoji ? parts[0] : null,
-// // // // // // // // // // // // //     name: firstIsEmoji ? parts.slice(1).join(" ") || raw : raw,
-// // // // // // // // // // // // //   };
+// // // // // // // // // // // // //   const raw = (cat?.name || "").trim();
+// // // // // // // // // // // // //   const m = raw.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*(.*)$/u);
+// // // // // // // // // // // // //   if (m) return { emoji: m[1], name: m[2] || raw };
+// // // // // // // // // // // // //   return { emoji: "📂", name: raw || "Catégorie" };
+// // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // function formatDateFr(iso) {
+// // // // // // // // // // // // //   if (!iso || iso === "—") return "—";
+// // // // // // // // // // // // //   const s = String(iso).slice(0, 10);
+// // // // // // // // // // // // //   const parts = s.split("-");
+// // // // // // // // // // // // //   if (parts.length !== 3) return s;
+// // // // // // // // // // // // //   const [y, m, d] = parts;
+// // // // // // // // // // // // //   const mois = [
+// // // // // // // // // // // // //     "janvier", "février", "mars", "avril", "mai", "juin",
+// // // // // // // // // // // // //     "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+// // // // // // // // // // // // //   ];
+// // // // // // // // // // // // //   const mi = parseInt(m, 10) - 1;
+// // // // // // // // // // // // //   if (mi < 0 || mi > 11) return s;
+// // // // // // // // // // // // //   return `${parseInt(d, 10)} ${mois[mi]} ${y}`;
+// // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // function dateKeyOf(row) {
+// // // // // // // // // // // // //   return (
+// // // // // // // // // // // // //     (row.date || row.created_at || row.update_at || "").toString().slice(0, 10) ||
+// // // // // // // // // // // // //     "—"
+// // // // // // // // // // // // //   );
 // // // // // // // // // // // // // }
 
 // // // // // // // // // // // // // function convertirQuantite(qte, stock) {
@@ -1853,7 +3375,6 @@
 // // // // // // // // // // // // //   (stock_ajustments || [])
 // // // // // // // // // // // // //     .filter((a) => Number(a.item_id) === itemIdNum && Number(a.deleted ?? 0) === 0)
 // // // // // // // // // // // // //     .forEach((a) => entrepots.add(Number(a.entrepot_id)));
-
 // // // // // // // // // // // // //   let total = 0;
 // // // // // // // // // // // // //   entrepots.forEach((entrepotId) => {
 // // // // // // // // // // // // //     const stock = (stocks || []).find(
@@ -1892,111 +3413,39 @@
 // // // // // // // // // // // // //   return total;
 // // // // // // // // // // // // // };
 
-// // // // // // // // // // // // // function loadScript(src) {
-// // // // // // // // // // // // //   return new Promise((resolve, reject) => {
-// // // // // // // // // // // // //     if (document.querySelector(`script[src="${src}"]`)) {
-// // // // // // // // // // // // //       resolve();
-// // // // // // // // // // // // //       return;
-// // // // // // // // // // // // //     }
-// // // // // // // // // // // // //     const s = document.createElement("script");
-// // // // // // // // // // // // //     s.src = src;
-// // // // // // // // // // // // //     s.async = true;
-// // // // // // // // // // // // //     s.onload = () => resolve();
-// // // // // // // // // // // // //     s.onerror = reject;
-// // // // // // // // // // // // //     document.head.appendChild(s);
-// // // // // // // // // // // // //   });
-// // // // // // // // // // // // // }
-
-// // // // // // // // // // // // // async function loadJsPDF() {
-// // // // // // // // // // // // //   if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-// // // // // // // // // // // // //   await loadScript(
-// // // // // // // // // // // // //     "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-// // // // // // // // // // // // //   );
-// // // // // // // // // // // // //   if (!window.jspdf?.jsPDF) throw new Error("jsPDF non chargé");
-// // // // // // // // // // // // //   return window.jspdf.jsPDF;
-// // // // // // // // // // // // // }
-
-// // // // // // // // // // // // // /** Charge une image (URL relative/absolue/data) en dataURL pour jsPDF */
-// // // // // // // // // // // // // function loadImageAsDataUrl(src) {
-// // // // // // // // // // // // //   return new Promise((resolve) => {
-// // // // // // // // // // // // //     if (!src) {
-// // // // // // // // // // // // //       resolve(null);
-// // // // // // // // // // // // //       return;
-// // // // // // // // // // // // //     }
-// // // // // // // // // // // // //     if (String(src).startsWith("data:")) {
-// // // // // // // // // // // // //       resolve(src);
-// // // // // // // // // // // // //       return;
-// // // // // // // // // // // // //     }
-// // // // // // // // // // // // //     const img = new Image();
-// // // // // // // // // // // // //     img.crossOrigin = "anonymous";
-// // // // // // // // // // // // //     img.onload = () => {
-// // // // // // // // // // // // //       try {
-// // // // // // // // // // // // //         const canvas = document.createElement("canvas");
-// // // // // // // // // // // // //         const max = 320;
-// // // // // // // // // // // // //         let w = img.naturalWidth || img.width;
-// // // // // // // // // // // // //         let h = img.naturalHeight || img.height;
-// // // // // // // // // // // // //         if (w > max || h > max) {
-// // // // // // // // // // // // //           const r = Math.min(max / w, max / h);
-// // // // // // // // // // // // //           w = Math.round(w * r);
-// // // // // // // // // // // // //           h = Math.round(h * r);
-// // // // // // // // // // // // //         }
-// // // // // // // // // // // // //         canvas.width = w;
-// // // // // // // // // // // // //         canvas.height = h;
-// // // // // // // // // // // // //         const ctx = canvas.getContext("2d");
-// // // // // // // // // // // // //         ctx.fillStyle = "#ffffff";
-// // // // // // // // // // // // //         ctx.fillRect(0, 0, w, h);
-// // // // // // // // // // // // //         ctx.drawImage(img, 0, 0, w, h);
-// // // // // // // // // // // // //         resolve(canvas.toDataURL("image/jpeg", 0.85));
-// // // // // // // // // // // // //       } catch {
-// // // // // // // // // // // // //         resolve(null);
-// // // // // // // // // // // // //       }
-// // // // // // // // // // // // //     };
-// // // // // // // // // // // // //     img.onerror = () => resolve(null);
-// // // // // // // // // // // // //     try {
-// // // // // // // // // // // // //       img.src = new URL(src, window.location.origin).href;
-// // // // // // // // // // // // //     } catch {
-// // // // // // // // // // // // //       img.src = src;
-// // // // // // // // // // // // //     }
-// // // // // // // // // // // // //   });
-// // // // // // // // // // // // // }
-
-// // // // // // // // // // // // // const TYPE_META = {
-// // // // // // // // // // // // //   categorie: { label: "Catégorie", icon: Tag, color: "#60a5fa", badge: "CATÉGORIE" },
-// // // // // // // // // // // // //   article: { label: "Article", icon: Package, color: "var(--gradient-start)", badge: "ARTICLE" },
-// // // // // // // // // // // // //   entrepot: { label: "Entrepôt", icon: Warehouse, color: "#a78bfa", badge: "ENTREPÔT" },
-// // // // // // // // // // // // //   utilisateur: { label: "Utilisateur", icon: Users, color: "#fbbf24", badge: "UTILISATEUR" },
-// // // // // // // // // // // // //   mouvement: { label: "Mouvement", icon: ArrowLeftRight, color: "#34d399", badge: "MOUVEMENT" },
+// // // // // // // // // // // // // const TYPE_LABEL = {
+// // // // // // // // // // // // //   categorie: "Catégories",
+// // // // // // // // // // // // //   article: "Articles",
+// // // // // // // // // // // // //   entrepot: "Entrepôts",
+// // // // // // // // // // // // //   utilisateur: "Utilisateurs",
+// // // // // // // // // // // // //   mouvement: "Mouvements",
+// // // // // // // // // // // // //   audit: "Journal d'audit",
+// // // // // // // // // // // // //   archive: "Archives mouvements",
 // // // // // // // // // // // // // };
 
-// // // // // // // // // // // // // /* ========== PAGE ========== */
 // // // // // // // // // // // // // export default function DetailsCarousel() {
-// // // // // // // // // // // // //   const { type } = useParams();
+// // // // // // // // // // // // //   const { type: typeParam } = useParams();
+// // // // // // // // // // // // //   const location = useLocation();
 // // // // // // // // // // // // //   const navigate = useNavigate();
 // // // // // // // // // // // // //   const theme =
-// // // // // // // // // // // // //     (typeof sessionStorage !== "undefined" &&
-// // // // // // // // // // // // //       sessionStorage.getItem("theme")) ||
+// // // // // // // // // // // // //     (typeof sessionStorage !== "undefined" && sessionStorage.getItem("theme")) ||
 // // // // // // // // // // // // //     "dark-galaxy";
 
-// // // // // // // // // // // // //   const meta = TYPE_META[type] || {
-// // // // // // // // // // // // //     label: type || "Élément",
-// // // // // // // // // // // // //     icon: Info,
-// // // // // // // // // // // // //     color: "var(--gradient-start)",
-// // // // // // // // // // // // //     badge: "DÉTAIL",
-// // // // // // // // // // // // //   };
-// // // // // // // // // // // // //   const MetaIcon = meta.icon;
+// // // // // // // // // // // // //   const stateType = location.state?.type;
+// // // // // // // // // // // // //   const stateKey = location.state?.key; // date | "all" | id
+// // // // // // // // // // // // //   const type = stateType || typeParam || "categorie";
 
+// // // // // // // // // // // // //   const [loading, setLoading] = useState(true);
 // // // // // // // // // // // // //   const [items, setItems] = useState([]);
 // // // // // // // // // // // // //   const [index, setIndex] = useState(0);
-// // // // // // // // // // // // //   const [loading, setLoading] = useState(true);
 // // // // // // // // // // // // //   const [error, setError] = useState("");
-// // // // // // // // // // // // //   const [ctx, setCtx] = useState({ stocks: [], mouvements: [], ajustements: [], categories: [] });
-// // // // // // // // // // // // //   const [pdfBusy, setPdfBusy] = useState(false);
 
 // // // // // // // // // // // // //   useEffect(() => {
 // // // // // // // // // // // // //     let cancelled = false;
-// // // // // // // // // // // // //     (async () => {
+// // // // // // // // // // // // //     async function load() {
 // // // // // // // // // // // // //       setLoading(true);
 // // // // // // // // // // // // //       setError("");
+// // // // // // // // // // // // //       setIndex(0);
 // // // // // // // // // // // // //       try {
 // // // // // // // // // // // // //         const [stocksRes, mvtRes, ajRes] = await Promise.all([
 // // // // // // // // // // // // //           getStocks().catch(() => ({ data: [] })),
@@ -2008,280 +3457,142 @@
 // // // // // // // // // // // // //         const ajustements = ajRes.data || [];
 
 // // // // // // // // // // // // //         let list = [];
-// // // // // // // // // // // // //         let categories = [];
 
 // // // // // // // // // // // // //         if (type === "categorie") {
-// // // // // // // // // // // // //           const [cr, ir] = await Promise.all([
+// // // // // // // // // // // // //           const [cats, its] = await Promise.all([
 // // // // // // // // // // // // //             getCategories(),
 // // // // // // // // // // // // //             getItems().catch(() => ({ data: [] })),
 // // // // // // // // // // // // //           ]);
-// // // // // // // // // // // // //           categories = (cr.data || []).filter((c) => Number(c.deleted ?? 0) === 0);
-// // // // // // // // // // // // //           const allItems = (ir.data || []).filter((i) => Number(i.deleted ?? 0) === 0);
-// // // // // // // // // // // // //           list = categories
+// // // // // // // // // // // // //           list = (cats.data || [])
+// // // // // // // // // // // // //             .filter((c) => Number(c.deleted ?? 0) === 0)
 // // // // // // // // // // // // //             .map((c) => ({
 // // // // // // // // // // // // //               ...c,
-// // // // // // // // // // // // //               _articles: allItems.filter(
+// // // // // // // // // // // // //               _articles: (its.data || []).filter(
 // // // // // // // // // // // // //                 (i) => Number(i.category_item) === Number(c.id)
 // // // // // // // // // // // // //               ),
-// // // // // // // // // // // // //             }))
-// // // // // // // // // // // // //             .sort((a, b) =>
-// // // // // // // // // // // // //               parseCategoryName(a).name.localeCompare(
-// // // // // // // // // // // // //                 parseCategoryName(b).name,
-// // // // // // // // // // // // //                 "fr",
-// // // // // // // // // // // // //                 { sensitivity: "base" }
-// // // // // // // // // // // // //               )
-// // // // // // // // // // // // //             );
+// // // // // // // // // // // // //             }));
 // // // // // // // // // // // // //         } else if (type === "article") {
-// // // // // // // // // // // // //           const [ir, cr] = await Promise.all([
+// // // // // // // // // // // // //           const [its, cats] = await Promise.all([
 // // // // // // // // // // // // //             getItems(),
 // // // // // // // // // // // // //             getCategories().catch(() => ({ data: [] })),
 // // // // // // // // // // // // //           ]);
-// // // // // // // // // // // // //           categories = cr.data || [];
-// // // // // // // // // // // // //           list = (ir.data || [])
+// // // // // // // // // // // // //           const catMap = Object.fromEntries(
+// // // // // // // // // // // // //             (cats.data || []).map((c) => [Number(c.id), c.name])
+// // // // // // // // // // // // //           );
+// // // // // // // // // // // // //           list = (its.data || [])
 // // // // // // // // // // // // //             .filter((i) => Number(i.deleted ?? 0) === 0)
 // // // // // // // // // // // // //             .map((i) => ({
 // // // // // // // // // // // // //               ...i,
 // // // // // // // // // // // // //               stockReel: calculerStockTotal(i.id, stocks, mouvements, ajustements),
-// // // // // // // // // // // // //               _catName:
-// // // // // // // // // // // // //                 (categories.find((c) => Number(c.id) === Number(i.category_item)) || {})
-// // // // // // // // // // // // //                   .name || "—",
-// // // // // // // // // // // // //             }))
-// // // // // // // // // // // // //             .sort((a, b) =>
-// // // // // // // // // // // // //               String(a.name || "").localeCompare(String(b.name || ""), "fr")
-// // // // // // // // // // // // //             );
+// // // // // // // // // // // // //               _catName: catMap[Number(i.category_item)] || "—",
+// // // // // // // // // // // // //             }));
 // // // // // // // // // // // // //         } else if (type === "entrepot") {
-// // // // // // // // // // // // //           const er = await getEntrepots();
-// // // // // // // // // // // // //           list = (er.data || [])
-// // // // // // // // // // // // //             .filter((e) => Number(e.deleted ?? 0) === 0)
-// // // // // // // // // // // // //             .sort((a, b) =>
-// // // // // // // // // // // // //               String(a.name || a.reference || "").localeCompare(
-// // // // // // // // // // // // //                 String(b.name || b.reference || ""),
-// // // // // // // // // // // // //                 "fr"
-// // // // // // // // // // // // //               )
-// // // // // // // // // // // // //             );
+// // // // // // // // // // // // //           const res = await getEntrepots();
+// // // // // // // // // // // // //           list = (res.data || []).filter((e) => Number(e.deleted ?? 0) === 0);
 // // // // // // // // // // // // //         } else if (type === "utilisateur") {
-// // // // // // // // // // // // //           const ur = await getUsers();
-// // // // // // // // // // // // //           list = (ur.data || [])
-// // // // // // // // // // // // //             .filter((u) => Number(u.deleted ?? 0) === 0)
-// // // // // // // // // // // // //             .sort((a, b) =>
-// // // // // // // // // // // // //               String(a.name || "").localeCompare(String(b.name || ""), "fr")
-// // // // // // // // // // // // //             );
+// // // // // // // // // // // // //           const res = await getUsers();
+// // // // // // // // // // // // //           list = (res.data || []).filter((u) => Number(u.deleted ?? 0) === 0);
 // // // // // // // // // // // // //         } else if (type === "mouvement") {
-// // // // // // // // // // // // //           list = (mouvements || [])
+// // // // // // // // // // // // //           const [its, ents] = await Promise.all([
+// // // // // // // // // // // // //             getItems().catch(() => ({ data: [] })),
+// // // // // // // // // // // // //             getEntrepots().catch(() => ({ data: [] })),
+// // // // // // // // // // // // //           ]);
+// // // // // // // // // // // // //           const itemMap = Object.fromEntries(
+// // // // // // // // // // // // //             (its.data || []).map((i) => [Number(i.id), i])
+// // // // // // // // // // // // //           );
+// // // // // // // // // // // // //           const entMap = Object.fromEntries(
+// // // // // // // // // // // // //             (ents.data || []).map((e) => [Number(e.id), e])
+// // // // // // // // // // // // //           );
+// // // // // // // // // // // // //           list = [
+// // // // // // // // // // // // //             ...mouvements.map((m) => ({ ...m, _src: "recent" })),
+// // // // // // // // // // // // //             ...ajustements.map((m) => ({ ...m, _src: "ajustment" })),
+// // // // // // // // // // // // //           ]
 // // // // // // // // // // // // //             .filter((m) => Number(m.deleted ?? 0) === 0)
-// // // // // // // // // // // // //             .sort((a, b) =>
-// // // // // // // // // // // // //               String(b.date || b.created_at || "").localeCompare(
-// // // // // // // // // // // // //                 String(a.date || a.created_at || "")
-// // // // // // // // // // // // //               )
-// // // // // // // // // // // // //             );
+// // // // // // // // // // // // //             .map((m) => ({
+// // // // // // // // // // // // //               ...m,
+// // // // // // // // // // // // //               _item: itemMap[Number(m.item_id)],
+// // // // // // // // // // // // //               _entrepot: entMap[Number(m.entrepot_id)],
+// // // // // // // // // // // // //             }))
+// // // // // // // // // // // // //             .sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
+// // // // // // // // // // // // //         } else if (type === "archive") {
+// // // // // // // // // // // // //           const [arch, its, ents] = await Promise.all([
+// // // // // // // // // // // // //             getMouvementsArchives().catch(() => ({ data: [] })),
+// // // // // // // // // // // // //             getItems().catch(() => ({ data: [] })),
+// // // // // // // // // // // // //             getEntrepots().catch(() => ({ data: [] })),
+// // // // // // // // // // // // //           ]);
+// // // // // // // // // // // // //           const itemMap = Object.fromEntries(
+// // // // // // // // // // // // //             (its.data || []).map((i) => [Number(i.id), i])
+// // // // // // // // // // // // //           );
+// // // // // // // // // // // // //           const entMap = Object.fromEntries(
+// // // // // // // // // // // // //             (ents.data || []).map((e) => [Number(e.id), e])
+// // // // // // // // // // // // //           );
+// // // // // // // // // // // // //           let rows = (arch.data || []).filter((m) => Number(m.deleted ?? 0) === 0);
+// // // // // // // // // // // // //           if (stateKey && stateKey !== "all") {
+// // // // // // // // // // // // //             const key = String(stateKey);
+// // // // // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === key);
+// // // // // // // // // // // // //           }
+// // // // // // // // // // // // //           list = rows
+// // // // // // // // // // // // //             .map((m) => ({
+// // // // // // // // // // // // //               ...m,
+// // // // // // // // // // // // //               _src: "archive",
+// // // // // // // // // // // // //               _item: itemMap[Number(m.item_id)],
+// // // // // // // // // // // // //               _entrepot: entMap[Number(m.entrepot_id)],
+// // // // // // // // // // // // //             }))
+// // // // // // // // // // // // //             .sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
+// // // // // // // // // // // // //         } else if (type === "audit") {
+// // // // // // // // // // // // //           const logsRes = await getAuditLogs().catch(() => ({ data: [] }));
+// // // // // // // // // // // // //           const raw = logsRes.data ?? logsRes ?? [];
+// // // // // // // // // // // // //           let rows = (Array.isArray(raw) ? raw : []).filter(
+// // // // // // // // // // // // //             (r) => Number(r.deleted ?? 0) === 0
+// // // // // // // // // // // // //           );
+// // // // // // // // // // // // //           if (stateKey && stateKey !== "all") {
+// // // // // // // // // // // // //             const key = String(stateKey);
+// // // // // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === key);
+// // // // // // // // // // // // //           }
+// // // // // // // // // // // // //           list = rows.sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
 // // // // // // // // // // // // //         } else {
-// // // // // // // // // // // // //           throw new Error(`Type non supporté : ${type}`);
+// // // // // // // // // // // // //           throw new Error(`Type inconnu : ${type}`);
 // // // // // // // // // // // // //         }
 
-// // // // // // // // // // // // //         if (!cancelled) {
-// // // // // // // // // // // // //           setItems(list);
-// // // // // // // // // // // // //           setIndex(0);
-// // // // // // // // // // // // //           setCtx({ stocks, mouvements, ajustements, categories });
-// // // // // // // // // // // // //         }
+// // // // // // // // // // // // //         if (!cancelled) setItems(list);
 // // // // // // // // // // // // //       } catch (e) {
 // // // // // // // // // // // // //         if (!cancelled) setError(e.message || "Erreur de chargement");
 // // // // // // // // // // // // //       } finally {
 // // // // // // // // // // // // //         if (!cancelled) setLoading(false);
 // // // // // // // // // // // // //       }
-// // // // // // // // // // // // //     })();
+// // // // // // // // // // // // //     }
+// // // // // // // // // // // // //     load();
 // // // // // // // // // // // // //     return () => {
 // // // // // // // // // // // // //       cancelled = true;
 // // // // // // // // // // // // //     };
-// // // // // // // // // // // // //   }, [type]);
+// // // // // // // // // // // // //   }, [type, stateKey]);
 
 // // // // // // // // // // // // //   const current = items[index] || null;
+// // // // // // // // // // // // //   const prev = () => setIndex((i) => (i > 0 ? i - 1 : items.length - 1));
+// // // // // // // // // // // // //   const next = () => setIndex((i) => (i < items.length - 1 ? i + 1 : 0));
 
-// // // // // // // // // // // // //   const prev = useCallback(() => {
-// // // // // // // // // // // // //     setIndex((i) => (i <= 0 ? Math.max(items.length - 1, 0) : i - 1));
-// // // // // // // // // // // // //   }, [items.length]);
-
-// // // // // // // // // // // // //   const next = useCallback(() => {
-// // // // // // // // // // // // //     setIndex((i) => (i >= items.length - 1 ? 0 : i + 1));
-// // // // // // // // // // // // //   }, [items.length]);
-
-// // // // // // // // // // // // //   useEffect(() => {
-// // // // // // // // // // // // //     const onKey = (e) => {
-// // // // // // // // // // // // //       if (e.key === "ArrowUp" || e.key === "ArrowLeft") prev();
-// // // // // // // // // // // // //       if (e.key === "ArrowDown" || e.key === "ArrowRight") next();
-// // // // // // // // // // // // //     };
-// // // // // // // // // // // // //     window.addEventListener("keydown", onKey);
-// // // // // // // // // // // // //     return () => window.removeEventListener("keydown", onKey);
-// // // // // // // // // // // // //   }, [prev, next]);
-
-// // // // // // // // // // // // //   const titleOf = useCallback(
-// // // // // // // // // // // // //     (row) => {
-// // // // // // // // // // // // //       if (!row) return "—";
-// // // // // // // // // // // // //       if (type === "categorie") return parseCategoryName(row).name;
-// // // // // // // // // // // // //       if (type === "article") return designation(row);
-// // // // // // // // // // // // //       if (type === "entrepot") return row.name || row.reference || `#${row.id}`;
-// // // // // // // // // // // // //       if (type === "utilisateur")
-// // // // // // // // // // // // //         return `${row.first_name || ""} ${row.name || ""}`.trim() || row.email;
-// // // // // // // // // // // // //       if (type === "mouvement")
-// // // // // // // // // // // // //         return `${row.type || "Mvt"} · ${String(row.date || "").slice(0, 10)}`;
-// // // // // // // // // // // // //       return `#${row.id}`;
-// // // // // // // // // // // // //     },
-// // // // // // // // // // // // //     [type]
-// // // // // // // // // // // // //   );
-
-// // // // // // // // // // // // //   const handlePdf = useCallback(async () => {
-// // // // // // // // // // // // //     if (!items.length || pdfBusy) return;
-// // // // // // // // // // // // //     setPdfBusy(true);
-// // // // // // // // // // // // //     try {
-// // // // // // // // // // // // //       const JsPDF = await loadJsPDF();
-// // // // // // // // // // // // //       const doc = new JsPDF({ unit: "mm", format: "a4" });
-// // // // // // // // // // // // //       const pageW = doc.internal.pageSize.getWidth();
-// // // // // // // // // // // // //       const pageH = doc.internal.pageSize.getHeight();
-// // // // // // // // // // // // //       const margin = 14;
-// // // // // // // // // // // // //       const indigo = [79, 70, 229];
-// // // // // // // // // // // // //       const slate = [51, 65, 85];
-// // // // // // // // // // // // //       const muted = [100, 116, 139];
-
-// // // // // // // // // // // // //       const ensure = (need = 12) => {
-// // // // // // // // // // // // //         if (y + need > pageH - 16) {
-// // // // // // // // // // // // //           doc.addPage();
-// // // // // // // // // // // // //           y = margin;
-// // // // // // // // // // // // //         }
-// // // // // // // // // // // // //       };
-
-// // // // // // // // // // // // //       // —— En-tête global ——
-// // // // // // // // // // // // //       doc.setFillColor(...indigo);
-// // // // // // // // // // // // //       doc.rect(0, 0, pageW, 26, "F");
-// // // // // // // // // // // // //       doc.setFillColor(165, 180, 252);
-// // // // // // // // // // // // //       doc.rect(0, 26, pageW, 1.2, "F");
-// // // // // // // // // // // // //       doc.setTextColor(255, 255, 255);
-// // // // // // // // // // // // //       doc.setFontSize(13);
-// // // // // // // // // // // // //       doc.setFont(undefined, "bold");
-// // // // // // // // // // // // //       doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, 12);
-// // // // // // // // // // // // //       doc.setFontSize(9);
-// // // // // // // // // // // // //       doc.setFont(undefined, "normal");
-// // // // // // // // // // // // //       doc.text(
-// // // // // // // // // // // // //         `Detail All · ${meta.label} · ${items.length} élément(s)`,
-// // // // // // // // // // // // //         margin,
-// // // // // // // // // // // // //         20
-// // // // // // // // // // // // //       );
-// // // // // // // // // // // // //       doc.text(
-// // // // // // // // // // // // //         new Date().toLocaleString("fr-FR"),
-// // // // // // // // // // // // //         pageW - margin,
-// // // // // // // // // // // // //         20,
-// // // // // // // // // // // // //         { align: "right" }
-// // // // // // // // // // // // //       );
-
-// // // // // // // // // // // // //       let y = 36;
-
-// // // // // // // // // // // // //       for (let i = 0; i < items.length; i++) {
-// // // // // // // // // // // // //         const row = items[i];
-// // // // // // // // // // // // //         ensure(42);
-
-// // // // // // // // // // // // //         // Bandeau fiche
-// // // // // // // // // // // // //         doc.setFillColor(241, 245, 249);
-// // // // // // // // // // // // //         doc.roundedRect(margin, y - 4, pageW - margin * 2, 8, 2, 2, "F");
-// // // // // // // // // // // // //         doc.setTextColor(...indigo);
-// // // // // // // // // // // // //         doc.setFontSize(11);
-// // // // // // // // // // // // //         doc.setFont(undefined, "bold");
-// // // // // // // // // // // // //         doc.text(`${i + 1}/${items.length} · ${String(titleOf(row)).slice(0, 60)}`, margin + 2, y + 2);
-// // // // // // // // // // // // //         y += 12;
-
-// // // // // // // // // // // // //         // Image selon type
-// // // // // // // // // // // // //         let imgSrc = null;
-// // // // // // // // // // // // //         if (type === "categorie") imgSrc = toIconSrc(row.icon);
-// // // // // // // // // // // // //         if (type === "article") imgSrc = getArticleImageSrc(row);
-// // // // // // // // // // // // //         if (imgSrc) {
-// // // // // // // // // // // // //           const dataUrl = await loadImageAsDataUrl(imgSrc);
-// // // // // // // // // // // // //           if (dataUrl) {
-// // // // // // // // // // // // //             ensure(32);
-// // // // // // // // // // // // //             try {
-// // // // // // // // // // // // //               const fmt = dataUrl.includes("png") ? "PNG" : "JPEG";
-// // // // // // // // // // // // //               doc.addImage(dataUrl, fmt, margin, y, 22, 22);
-// // // // // // // // // // // // //             } catch {
-// // // // // // // // // // // // //               /* ignore image errors */
-// // // // // // // // // // // // //             }
-// // // // // // // // // // // // //           }
-// // // // // // // // // // // // //         }
-
-// // // // // // // // // // // // //         const textX = imgSrc ? margin + 28 : margin;
-// // // // // // // // // // // // //         doc.setTextColor(...slate);
-// // // // // // // // // // // // //         doc.setFontSize(10);
-// // // // // // // // // // // // //         doc.setFont(undefined, "bold");
-// // // // // // // // // // // // //         doc.text(String(titleOf(row)).slice(0, 70), textX, y + 6);
-// // // // // // // // // // // // //         doc.setFont(undefined, "normal");
-// // // // // // // // // // // // //         doc.setFontSize(9);
-// // // // // // // // // // // // //         doc.setTextColor(...muted);
-
-// // // // // // // // // // // // //         const lines = [];
-// // // // // // // // // // // // //         if (type === "categorie") {
-// // // // // // // // // // // // //           lines.push(`ID #${row.id}`);
-// // // // // // // // // // // // //           lines.push(`Description : ${(row.description || "—").toString().slice(0, 90)}`);
-// // // // // // // // // // // // //           lines.push(`Articles liés : ${(row._articles || []).length}`);
-// // // // // // // // // // // // //         } else if (type === "article") {
-// // // // // // // // // // // // //           lines.push(`ID #${row.id} · Catégorie : ${row._catName || "—"}`);
-// // // // // // // // // // // // //           lines.push(`Stock : ${convertirQuantite(row.stockReel, row)}`);
-// // // // // // // // // // // // //           lines.push(`Prix vente : ${row.sale_price_fc ?? "—"} FC`);
-// // // // // // // // // // // // //         } else if (type === "entrepot") {
-// // // // // // // // // // // // //           lines.push(`ID #${row.id}`);
-// // // // // // // // // // // // //           lines.push(`Localisation : ${row.location || row.localisation || row.adresse || "—"}`);
-// // // // // // // // // // // // //           lines.push(`Référence : ${row.reference || "—"} · Capacité : ${row.capacity ?? "—"}`);
-// // // // // // // // // // // // //         } else if (type === "utilisateur") {
-// // // // // // // // // // // // //           lines.push(`ID #${row.id}`);
-// // // // // // // // // // // // //           lines.push(`Email : ${row.email || "—"}`);
-// // // // // // // // // // // // //           lines.push(`Rôle : ${row.role || "—"}`);
-// // // // // // // // // // // // //         } else if (type === "mouvement") {
-// // // // // // // // // // // // //           lines.push(`ID #${row.id} · Article #${row.item_id ?? "—"}`);
-// // // // // // // // // // // // //           lines.push(`Type : ${row.type || "—"} · Qté : ${row.qty ?? "—"}`);
-// // // // // // // // // // // // //           lines.push(`Date : ${String(row.date || row.created_at || "—").slice(0, 16)}`);
-// // // // // // // // // // // // //           lines.push(`Nature : ${row.nature || "—"}`);
-// // // // // // // // // // // // //         }
-
-// // // // // // // // // // // // //         let ty = y + 12;
-// // // // // // // // // // // // //         lines.forEach((line) => {
-// // // // // // // // // // // // //           ensure(7);
-// // // // // // // // // // // // //           if (ty > pageH - 16) {
-// // // // // // // // // // // // //             doc.addPage();
-// // // // // // // // // // // // //             ty = margin;
-// // // // // // // // // // // // //           }
-// // // // // // // // // // // // //           doc.text(String(line).slice(0, 95), textX, ty);
-// // // // // // // // // // // // //           ty += 5.5;
-// // // // // // // // // // // // //         });
-
-// // // // // // // // // // // // //         y = Math.max(ty, y + (imgSrc ? 28 : 8)) + 6;
-
-// // // // // // // // // // // // //         // Ligne séparatrice
-// // // // // // // // // // // // //         ensure(4);
-// // // // // // // // // // // // //         doc.setDrawColor(226, 232, 240);
-// // // // // // // // // // // // //         doc.setLineWidth(0.3);
-// // // // // // // // // // // // //         doc.line(margin, y, pageW - margin, y);
-// // // // // // // // // // // // //         y += 8;
-// // // // // // // // // // // // //       }
-
-// // // // // // // // // // // // //       // Pied de page sur dernière page
-// // // // // // // // // // // // //       const total = doc.internal.getNumberOfPages();
-// // // // // // // // // // // // //       for (let p = 1; p <= total; p++) {
-// // // // // // // // // // // // //         doc.setPage(p);
-// // // // // // // // // // // // //         doc.setFontSize(8);
-// // // // // // // // // // // // //         doc.setTextColor(148, 163, 184);
-// // // // // // // // // // // // //         doc.text(
-// // // // // // // // // // // // //           `${APP_NAME} — Detail All ${meta.label} — page ${p}/${total}`,
-// // // // // // // // // // // // //           margin,
-// // // // // // // // // // // // //           pageH - 8
-// // // // // // // // // // // // //         );
-// // // // // // // // // // // // //       }
-
-// // // // // // // // // // // // //       doc.save(`StockFlow_DetailAll_${type}_${items.length}.pdf`);
-// // // // // // // // // // // // //     } catch (e) {
-// // // // // // // // // // // // //       console.error(e);
-// // // // // // // // // // // // //       alert("Export PDF impossible.");
-// // // // // // // // // // // // //     } finally {
-// // // // // // // // // // // // //       setPdfBusy(false);
+// // // // // // // // // // // // //   const openFull = () => {
+// // // // // // // // // // // // //     if (!current) return;
+// // // // // // // // // // // // //     if (type === "audit") {
+// // // // // // // // // // // // //       navigate(`/details/audit/${current.id}`);
+// // // // // // // // // // // // //       return;
 // // // // // // // // // // // // //     }
-// // // // // // // // // // // // //   }, [items, pdfBusy, type, meta.label, titleOf]);
-
-
-// // // // // // // // // // // // //   const css =
-// // // // // // // // // // // // //     typeof themeCssVars === "function" ? themeCssVars(theme) : {};
+// // // // // // // // // // // // //     if (type === "archive") {
+// // // // // // // // // // // // //       navigate(`/details/archive/${current.id}`);
+// // // // // // // // // // // // //       return;
+// // // // // // // // // // // // //     }
+// // // // // // // // // // // // //     if (type === "mouvement") {
+// // // // // // // // // // // // //       const k =
+// // // // // // // // // // // // //         current._src === "ajustment"
+// // // // // // // // // // // // //           ? "ajustment"
+// // // // // // // // // // // // //           : current._src === "archive"
+// // // // // // // // // // // // //           ? "archive"
+// // // // // // // // // // // // //           : "recent";
+// // // // // // // // // // // // //       navigate(`/details/mouvement/${current.id}?kind=${k}`);
+// // // // // // // // // // // // //       return;
+// // // // // // // // // // // // //     }
+// // // // // // // // // // // // //     navigate(`/details/${type}/${current.id}`);
+// // // // // // // // // // // // //   };
 
 // // // // // // // // // // // // //   return (
 // // // // // // // // // // // // //     <div
@@ -2289,17 +3600,12 @@
 // // // // // // // // // // // // //         position: "relative",
 // // // // // // // // // // // // //         minHeight: "100%",
 // // // // // // // // // // // // //         width: "100%",
-// // // // // // // // // // // // //         ...css,
+// // // // // // // // // // // // //         ...(typeof themeCssVars === "function" ? themeCssVars(theme) : {}),
 // // // // // // // // // // // // //       }}
 // // // // // // // // // // // // //     >
 // // // // // // // // // // // // //       <div
 // // // // // // // // // // // // //         aria-hidden
-// // // // // // // // // // // // //         style={{
-// // // // // // // // // // // // //           position: "fixed",
-// // // // // // // // // // // // //           inset: 0,
-// // // // // // // // // // // // //           zIndex: 0,
-// // // // // // // // // // // // //           pointerEvents: "none",
-// // // // // // // // // // // // //         }}
+// // // // // // // // // // // // //         style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
 // // // // // // // // // // // // //       >
 // // // // // // // // // // // // //         <ThemeBackground theme={theme} />
 // // // // // // // // // // // // //       </div>
@@ -2308,179 +3614,62 @@
 // // // // // // // // // // // // //         style={{
 // // // // // // // // // // // // //           position: "relative",
 // // // // // // // // // // // // //           zIndex: 1,
-// // // // // // // // // // // // //           maxWidth: 920,
+// // // // // // // // // // // // //           width: "100%",
+// // // // // // // // // // // // //           maxWidth: 900,
 // // // // // // // // // // // // //           margin: "0 auto",
-// // // // // // // // // // // // //           padding: "0 16px 2.5rem",
+// // // // // // // // // // // // //           padding: "0 16px 2rem",
+// // // // // // // // // // // // //           boxSizing: "border-box",
 // // // // // // // // // // // // //         }}
 // // // // // // // // // // // // //       >
 // // // // // // // // // // // // //         {/* TOP BAR */}
 // // // // // // // // // // // // //         <div
 // // // // // // // // // // // // //           style={{
 // // // // // // // // // // // // //             display: "flex",
-// // // // // // // // // // // // //             justifyContent: "space-between",
 // // // // // // // // // // // // //             alignItems: "center",
-// // // // // // // // // // // // //             gap: 10,
+// // // // // // // // // // // // //             justifyContent: "space-between",
+// // // // // // // // // // // // //             gap: 12,
+// // // // // // // // // // // // //             marginTop: "0.6rem",
+// // // // // // // // // // // // //             marginBottom: "1rem",
 // // // // // // // // // // // // //             flexWrap: "wrap",
-// // // // // // // // // // // // //             marginTop: "0.5rem",
-// // // // // // // // // // // // //             marginBottom: "1.25rem",
 // // // // // // // // // // // // //           }}
 // // // // // // // // // // // // //         >
 // // // // // // // // // // // // //           <button type="button" onClick={() => navigate(-1)} style={topBtn}>
 // // // // // // // // // // // // //             <ArrowLeft size={16} /> Retour
 // // // // // // // // // // // // //           </button>
-// // // // // // // // // // // // //           <button
-// // // // // // // // // // // // //             type="button"
-// // // // // // // // // // // // //             onClick={handlePdf}
-// // // // // // // // // // // // //             disabled={!current || pdfBusy}
-// // // // // // // // // // // // //             style={{
-// // // // // // // // // // // // //               ...topBtn,
-// // // // // // // // // // // // //               background:
-// // // // // // // // // // // // //                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-// // // // // // // // // // // // //               color: "#fff",
-// // // // // // // // // // // // //               border: "none",
-// // // // // // // // // // // // //               boxShadow: "0 8px 22px var(--glow-color)",
-// // // // // // // // // // // // //               opacity: !current || pdfBusy ? 0.7 : 1,
-// // // // // // // // // // // // //             }}
-// // // // // // // // // // // // //           >
-// // // // // // // // // // // // //             <Download size={16} />
-// // // // // // // // // // // // //             {pdfBusy ? "Export…" : `Exporter tout (${items.length || 0})`}
-// // // // // // // // // // // // //           </button>
-// // // // // // // // // // // // //         </div>
-
-// // // // // // // // // // // // //         {/* HEADER */}
-// // // // // // // // // // // // //         <div
-// // // // // // // // // // // // //           style={{
-// // // // // // // // // // // // //             display: "flex",
-// // // // // // // // // // // // //             flexDirection: "column",
-// // // // // // // // // // // // //             alignItems: "center",
-// // // // // // // // // // // // //             textAlign: "center",
-// // // // // // // // // // // // //             marginBottom: "1.25rem",
-// // // // // // // // // // // // //             gap: "0.65rem",
-// // // // // // // // // // // // //           }}
-// // // // // // // // // // // // //         >
 // // // // // // // // // // // // //           <div
-// // // // // // // // // // // // //             style={{
-// // // // // // // // // // // // //               width: 68,
-// // // // // // // // // // // // //               height: 68,
-// // // // // // // // // // // // //               borderRadius: 20,
-// // // // // // // // // // // // //               display: "flex",
-// // // // // // // // // // // // //               alignItems: "center",
-// // // // // // // // // // // // //               justifyContent: "center",
-// // // // // // // // // // // // //               background: `linear-gradient(145deg, ${meta.color}, var(--gradient-end))`,
-// // // // // // // // // // // // //               color: "#fff",
-// // // // // // // // // // // // //               boxShadow: "0 12px 32px var(--glow-color)",
-// // // // // // // // // // // // //               border: "1px solid rgba(255,255,255,0.22)",
-// // // // // // // // // // // // //               position: "relative",
-// // // // // // // // // // // // //               overflow: "hidden",
-// // // // // // // // // // // // //             }}
-// // // // // // // // // // // // //           >
-// // // // // // // // // // // // //             <div
-// // // // // // // // // // // // //               style={{
-// // // // // // // // // // // // //                 position: "absolute",
-// // // // // // // // // // // // //                 top: 6,
-// // // // // // // // // // // // //                 left: 10,
-// // // // // // // // // // // // //                 width: 18,
-// // // // // // // // // // // // //                 height: 9,
-// // // // // // // // // // // // //                 borderRadius: "50%",
-// // // // // // // // // // // // //                 background: "rgba(255,255,255,0.45)",
-// // // // // // // // // // // // //                 transform: "rotate(-20deg)",
-// // // // // // // // // // // // //               }}
-// // // // // // // // // // // // //             />
-// // // // // // // // // // // // //             <MetaIcon size={30} />
-// // // // // // // // // // // // //           </div>
-// // // // // // // // // // // // //           <div
-// // // // // // // // // // // // //             style={{
-// // // // // // // // // // // // //               display: "inline-flex",
-// // // // // // // // // // // // //               alignItems: "center",
-// // // // // // // // // // // // //               gap: "0.45rem",
-// // // // // // // // // // // // //               padding: "5px 12px",
-// // // // // // // // // // // // //               borderRadius: 999,
-// // // // // // // // // // // // //               background: "var(--glass-bg)",
-// // // // // // // // // // // // //               border: "1px solid var(--glass-border)",
-// // // // // // // // // // // // //               color: meta.color,
-// // // // // // // // // // // // //               fontSize: "0.7rem",
-// // // // // // // // // // // // //               fontWeight: 700,
-// // // // // // // // // // // // //               letterSpacing: ".08em",
-// // // // // // // // // // // // //               textTransform: "uppercase",
-// // // // // // // // // // // // //             }}
-// // // // // // // // // // // // //           >
-// // // // // // // // // // // // //             <Layers size={12} /> Detail All · {meta.badge}
-// // // // // // // // // // // // //           </div>
-// // // // // // // // // // // // //           <h1
 // // // // // // // // // // // // //             style={{
 // // // // // // // // // // // // //               fontFamily: "Syne, sans-serif",
-// // // // // // // // // // // // //               fontSize: "clamp(1.45rem, 3.2vw, 2rem)",
-// // // // // // // // // // // // //               fontWeight: 900,
-// // // // // // // // // // // // //               margin: 0,
-// // // // // // // // // // // // //               background:
-// // // // // // // // // // // // //                 "linear-gradient(135deg, var(--text), var(--gradient-start))",
-// // // // // // // // // // // // //               WebkitBackgroundClip: "text",
-// // // // // // // // // // // // //               WebkitTextFillColor: "transparent",
-// // // // // // // // // // // // //               backgroundClip: "text",
+// // // // // // // // // // // // //               fontWeight: 800,
+// // // // // // // // // // // // //               color: "var(--text)",
+// // // // // // // // // // // // //               fontSize: "1rem",
 // // // // // // // // // // // // //             }}
 // // // // // // // // // // // // //           >
-// // // // // // // // // // // // //             {meta.label}
-// // // // // // // // // // // // //             {loading ? "" : ` · ${items.length}`}
-// // // // // // // // // // // // //           </h1>
-// // // // // // // // // // // // //           <p
-// // // // // // // // // // // // //             style={{
-// // // // // // // // // // // // //               margin: 0,
-// // // // // // // // // // // // //               color: "var(--text-secondary)",
-// // // // // // // // // // // // //               fontSize: "0.9rem",
-// // // // // // // // // // // // //               maxWidth: 480,
-// // // // // // // // // // // // //             }}
-// // // // // // // // // // // // //           >
-// // // // // // // // // // // // //             Parcourez toutes les fiches une par une. Flèches ↑ ↓ ou boutons.
-// // // // // // // // // // // // //           </p>
+// // // // // // // // // // // // //             {TYPE_LABEL[type] || type}
+// // // // // // // // // // // // //             {stateKey && stateKey !== "all" ? ` · ${formatDateFr(stateKey)}` : ""}
+// // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // //           <div style={{ width: 88 }} />
 // // // // // // // // // // // // //         </div>
 
 // // // // // // // // // // // // //         {/* ARROW UP */}
 // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-// // // // // // // // // // // // //           <button
-// // // // // // // // // // // // //             type="button"
-// // // // // // // // // // // // //             onClick={prev}
-// // // // // // // // // // // // //             disabled={!items.length}
-// // // // // // // // // // // // //             style={arrowBtn}
-// // // // // // // // // // // // //             title="Précédent"
-// // // // // // // // // // // // //           >
+// // // // // // // // // // // // //           <button type="button" onClick={prev} disabled={!items.length} style={arrowBtn}>
 // // // // // // // // // // // // //             <ChevronUp size={28} />
 // // // // // // // // // // // // //           </button>
 // // // // // // // // // // // // //         </div>
 
-// // // // // // // // // // // // //         {/* CONTENT */}
 // // // // // // // // // // // // //         {loading ? (
 // // // // // // // // // // // // //           <GlassCard>
-// // // // // // // // // // // // //             <div
-// // // // // // // // // // // // //               style={{
-// // // // // // // // // // // // //                 padding: "3rem",
-// // // // // // // // // // // // //                 textAlign: "center",
-// // // // // // // // // // // // //                 color: "var(--text-secondary)",
-// // // // // // // // // // // // //               }}
-// // // // // // // // // // // // //             >
+// // // // // // // // // // // // //             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
 // // // // // // // // // // // // //               Chargement…
 // // // // // // // // // // // // //             </div>
 // // // // // // // // // // // // //           </GlassCard>
 // // // // // // // // // // // // //         ) : error ? (
 // // // // // // // // // // // // //           <GlassCard>
-// // // // // // // // // // // // //             <div
-// // // // // // // // // // // // //               style={{
-// // // // // // // // // // // // //                 padding: "2rem",
-// // // // // // // // // // // // //                 textAlign: "center",
-// // // // // // // // // // // // //                 color: "#f87171",
-// // // // // // // // // // // // //               }}
-// // // // // // // // // // // // //             >
-// // // // // // // // // // // // //               ⚠ {error}
-// // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // //             <div style={{ padding: "2rem", textAlign: "center", color: "#f87171" }}>{error}</div>
 // // // // // // // // // // // // //           </GlassCard>
 // // // // // // // // // // // // //         ) : !current ? (
 // // // // // // // // // // // // //           <GlassCard>
-// // // // // // // // // // // // //             <div
-// // // // // // // // // // // // //               style={{
-// // // // // // // // // // // // //                 padding: "2rem",
-// // // // // // // // // // // // //                 textAlign: "center",
-// // // // // // // // // // // // //                 color: "var(--text-secondary)",
-// // // // // // // // // // // // //               }}
-// // // // // // // // // // // // //             >
+// // // // // // // // // // // // //             <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
 // // // // // // // // // // // // //               Aucun élément.
 // // // // // // // // // // // // //             </div>
 // // // // // // // // // // // // //           </GlassCard>
@@ -2499,49 +3688,27 @@
 // // // // // // // // // // // // //             </div>
 
 // // // // // // // // // // // // //             {type === "categorie" && (
-// // // // // // // // // // // // //               <CategorieSlide
-// // // // // // // // // // // // //                 cat={current}
-// // // // // // // // // // // // //                 navigate={navigate}
-// // // // // // // // // // // // //                 onOpen={() => navigate(`/details/categorie/${current.id}`)}
-// // // // // // // // // // // // //               />
+// // // // // // // // // // // // //               <CategorieSlide cat={current} navigate={navigate} onOpen={openFull} />
 // // // // // // // // // // // // //             )}
 // // // // // // // // // // // // //             {type === "article" && (
-// // // // // // // // // // // // //               <ArticleSlide
-// // // // // // // // // // // // //                 item={current}
-// // // // // // // // // // // // //                 navigate={navigate}
-// // // // // // // // // // // // //                 onOpen={() => navigate(`/details/article/${current.id}`)}
-// // // // // // // // // // // // //               />
+// // // // // // // // // // // // //               <ArticleSlide item={current} onOpen={openFull} />
 // // // // // // // // // // // // //             )}
 // // // // // // // // // // // // //             {type === "entrepot" && (
-// // // // // // // // // // // // //               <EntrepotSlide
-// // // // // // // // // // // // //                 ent={current}
-// // // // // // // // // // // // //                 onOpen={() => navigate(`/details/entrepot/${current.id}`)}
-// // // // // // // // // // // // //               />
+// // // // // // // // // // // // //               <EntrepotSlide ent={current} onOpen={openFull} />
 // // // // // // // // // // // // //             )}
 // // // // // // // // // // // // //             {type === "utilisateur" && (
-// // // // // // // // // // // // //               <UserSlide
-// // // // // // // // // // // // //                 user={current}
-// // // // // // // // // // // // //                 onOpen={() => navigate(`/details/utilisateur/${current.id}`)}
-// // // // // // // // // // // // //               />
+// // // // // // // // // // // // //               <UserSlide user={current} onOpen={openFull} />
 // // // // // // // // // // // // //             )}
-// // // // // // // // // // // // //             {type === "mouvement" && (
-// // // // // // // // // // // // //               <MouvementSlide
-// // // // // // // // // // // // //                 m={current}
-// // // // // // // // // // // // //                 onOpen={() => navigate(`/details/mouvement/${current.id}`)}
-// // // // // // // // // // // // //               />
+// // // // // // // // // // // // //             {(type === "mouvement" || type === "archive") && (
+// // // // // // // // // // // // //               <MouvementSlide m={current} onOpen={openFull} />
 // // // // // // // // // // // // //             )}
+// // // // // // // // // // // // //             {type === "audit" && <AuditSlide log={current} onOpen={openFull} />}
 // // // // // // // // // // // // //           </>
 // // // // // // // // // // // // //         )}
 
 // // // // // // // // // // // // //         {/* ARROW DOWN */}
 // // // // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-// // // // // // // // // // // // //           <button
-// // // // // // // // // // // // //             type="button"
-// // // // // // // // // // // // //             onClick={next}
-// // // // // // // // // // // // //             disabled={!items.length}
-// // // // // // // // // // // // //             style={arrowBtn}
-// // // // // // // // // // // // //             title="Suivant"
-// // // // // // // // // // // // //           >
+// // // // // // // // // // // // //           <button type="button" onClick={next} disabled={!items.length} style={arrowBtn}>
 // // // // // // // // // // // // //             <ChevronDown size={28} />
 // // // // // // // // // // // // //           </button>
 // // // // // // // // // // // // //         </div>
@@ -2628,14 +3795,7 @@
 // // // // // // // // // // // // //             >
 // // // // // // // // // // // // //               {name}
 // // // // // // // // // // // // //             </div>
-// // // // // // // // // // // // //             <div
-// // // // // // // // // // // // //               style={{
-// // // // // // // // // // // // //                 marginTop: 10,
-// // // // // // // // // // // // //                 display: "flex",
-// // // // // // // // // // // // //                 gap: 8,
-// // // // // // // // // // // // //                 flexWrap: "wrap",
-// // // // // // // // // // // // //               }}
-// // // // // // // // // // // // //             >
+// // // // // // // // // // // // //             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
 // // // // // // // // // // // // //               <Badge color="#60a5fa">ID #{cat.id}</Badge>
 // // // // // // // // // // // // //               <Badge color="#4ade80">
 // // // // // // // // // // // // //                 {articles.length} article{articles.length > 1 ? "s" : ""}
@@ -2712,18 +3872,6 @@
 // // // // // // // // // // // // //               </tbody>
 // // // // // // // // // // // // //             </table>
 // // // // // // // // // // // // //           )}
-// // // // // // // // // // // // //           {articles.length > 12 && (
-// // // // // // // // // // // // //             <p
-// // // // // // // // // // // // //               style={{
-// // // // // // // // // // // // //                 margin: "0.75rem 0 0",
-// // // // // // // // // // // // //                 fontSize: "0.8rem",
-// // // // // // // // // // // // //                 color: "var(--text-secondary)",
-// // // // // // // // // // // // //                 textAlign: "center",
-// // // // // // // // // // // // //               }}
-// // // // // // // // // // // // //             >
-// // // // // // // // // // // // //               + {articles.length - 12} autres — ouvrir la fiche complète
-// // // // // // // // // // // // //             </p>
-// // // // // // // // // // // // //           )}
 // // // // // // // // // // // // //         </div>
 // // // // // // // // // // // // //       </GlassCard>
 // // // // // // // // // // // // //     </>
@@ -2755,7 +3903,6 @@
 // // // // // // // // // // // // //             display: "flex",
 // // // // // // // // // // // // //             alignItems: "center",
 // // // // // // // // // // // // //             justifyContent: "center",
-// // // // // // // // // // // // //             boxShadow: "0 10px 28px rgba(0,0,0,.12)",
 // // // // // // // // // // // // //           }}
 // // // // // // // // // // // // //         >
 // // // // // // // // // // // // //           {im ? (
@@ -2782,14 +3929,7 @@
 // // // // // // // // // // // // //           >
 // // // // // // // // // // // // //             {designation(item)}
 // // // // // // // // // // // // //           </div>
-// // // // // // // // // // // // //           <div
-// // // // // // // // // // // // //             style={{
-// // // // // // // // // // // // //               marginTop: 10,
-// // // // // // // // // // // // //               display: "flex",
-// // // // // // // // // // // // //               gap: 8,
-// // // // // // // // // // // // //               flexWrap: "wrap",
-// // // // // // // // // // // // //             }}
-// // // // // // // // // // // // //           >
+// // // // // // // // // // // // //           <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
 // // // // // // // // // // // // //             <Badge color="var(--gradient-start)">ID #{item.id}</Badge>
 // // // // // // // // // // // // //             <Badge color="#60a5fa">{item._catName || "—"}</Badge>
 // // // // // // // // // // // // //             <Badge color="#4ade80">
@@ -2799,7 +3939,11 @@
 // // // // // // // // // // // // //           </div>
 // // // // // // // // // // // // //           <InfoGrid
 // // // // // // // // // // // // //             rows={[
-// // // // // // // // // // // // //               { icon: Hash, label: "Prix vente", value: `${item.sale_price_fc ?? "—"} FC` },
+// // // // // // // // // // // // //               {
+// // // // // // // // // // // // //                 icon: Hash,
+// // // // // // // // // // // // //                 label: "Prix vente",
+// // // // // // // // // // // // //                 value: `${item.sale_price_fc ?? "—"} FC`,
+// // // // // // // // // // // // //               },
 // // // // // // // // // // // // //               { icon: Tag, label: "Catégorie", value: item._catName || "—" },
 // // // // // // // // // // // // //               { icon: Info, label: "Niveau", value: item.level ?? "—" },
 // // // // // // // // // // // // //             ]}
@@ -2817,14 +3961,7 @@
 // // // // // // // // // // // // //   return (
 // // // // // // // // // // // // //     <GlassCard>
 // // // // // // // // // // // // //       <div style={{ padding: "1.5rem" }}>
-// // // // // // // // // // // // //         <div
-// // // // // // // // // // // // //           style={{
-// // // // // // // // // // // // //             display: "flex",
-// // // // // // // // // // // // //             gap: 14,
-// // // // // // // // // // // // //             alignItems: "center",
-// // // // // // // // // // // // //             marginBottom: 12,
-// // // // // // // // // // // // //           }}
-// // // // // // // // // // // // //         >
+// // // // // // // // // // // // //         <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 12 }}>
 // // // // // // // // // // // // //           <div
 // // // // // // // // // // // // //             style={{
 // // // // // // // // // // // // //               width: 72,
@@ -2918,10 +4055,12 @@
 // // // // // // // // // // // // //           >
 // // // // // // // // // // // // //             {user.first_name} {user.name}
 // // // // // // // // // // // // //           </div>
-// // // // // // // // // // // // //           <div style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
+// // // // // // // // // // // // //           <div
+// // // // // // // // // // // // //             style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 4 }}
+// // // // // // // // // // // // //           >
 // // // // // // // // // // // // //             {user.role || "Utilisateur"} · {user.email || "—"}
 // // // // // // // // // // // // //           </div>
-// // // // // // // // // // // // //           <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+// // // // // // // // // // // // //           <div style={{ marginTop: 10 }}>
 // // // // // // // // // // // // //             <Badge color="#fbbf24">ID #{user.id}</Badge>
 // // // // // // // // // // // // //           </div>
 // // // // // // // // // // // // //           <button type="button" onClick={onOpen} style={btnOpen}>
@@ -2933,31 +4072,87 @@
 // // // // // // // // // // // // //   );
 // // // // // // // // // // // // // }
 
+// // // // // // // // // // // // // /** Mouvement OU Archive — affiche article + entrepôt + qty */
 // // // // // // // // // // // // // function MouvementSlide({ m, onOpen }) {
+// // // // // // // // // // // // //   const it = m._item;
+// // // // // // // // // // // // //   const en = m._entrepot;
+// // // // // // // // // // // // //   const im = it ? getArticleImageSrc(it) : null;
+// // // // // // // // // // // // //   const qty = it ? convertirQuantite(m.qty, it) : m.qty ?? "—";
+// // // // // // // // // // // // //   const entLabel =
+// // // // // // // // // // // // //     en?.name || en?.reference || (m.entrepot_id != null ? `Entrepôt #${m.entrepot_id}` : "—");
+// // // // // // // // // // // // //   const isIn = String(m.type || "").toLowerCase().includes("entr");
+
 // // // // // // // // // // // // //   return (
 // // // // // // // // // // // // //     <GlassCard>
 // // // // // // // // // // // // //       <div style={{ padding: "1.5rem" }}>
-// // // // // // // // // // // // //         <div
-// // // // // // // // // // // // //           style={{
-// // // // // // // // // // // // //             fontFamily: "Syne, sans-serif",
-// // // // // // // // // // // // //             fontWeight: 900,
-// // // // // // // // // // // // //             fontSize: "1.25rem",
-// // // // // // // // // // // // //             color: "var(--text)",
-// // // // // // // // // // // // //             marginBottom: 10,
-// // // // // // // // // // // // //           }}
-// // // // // // // // // // // // //         >
-// // // // // // // // // // // // //           {m.type || "Mouvement"} · {String(m.date || m.created_at || "").slice(0, 10)}
+// // // // // // // // // // // // //         <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
+// // // // // // // // // // // // //           <div
+// // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // //               width: 72,
+// // // // // // // // // // // // //               height: 72,
+// // // // // // // // // // // // //               borderRadius: 16,
+// // // // // // // // // // // // //               overflow: "hidden",
+// // // // // // // // // // // // //               background: "var(--glass-bg)",
+// // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // //               alignItems: "center",
+// // // // // // // // // // // // //               justifyContent: "center",
+// // // // // // // // // // // // //               flexShrink: 0,
+// // // // // // // // // // // // //               border: "1px solid var(--glass-border)",
+// // // // // // // // // // // // //             }}
+// // // // // // // // // // // // //           >
+// // // // // // // // // // // // //             {im ? (
+// // // // // // // // // // // // //               <img
+// // // // // // // // // // // // //                 src={im}
+// // // // // // // // // // // // //                 alt=""
+// // // // // // // // // // // // //                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
+// // // // // // // // // // // // //                 onError={(e) => {
+// // // // // // // // // // // // //                   e.currentTarget.style.display = "none";
+// // // // // // // // // // // // //                 }}
+// // // // // // // // // // // // //               />
+// // // // // // // // // // // // //             ) : (
+// // // // // // // // // // // // //               <Package size={28} color="var(--gradient-start)" />
+// // // // // // // // // // // // //             )}
+// // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // //           <div style={{ minWidth: 0, flex: 1 }}>
+// // // // // // // // // // // // //             <div
+// // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // //                 fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // //                 fontWeight: 900,
+// // // // // // // // // // // // //                 fontSize: "1.2rem",
+// // // // // // // // // // // // //                 color: "var(--text)",
+// // // // // // // // // // // // //               }}
+// // // // // // // // // // // // //             >
+// // // // // // // // // // // // //               {it ? designation(it) : `Article #${m.item_id}`}
+// // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // //             <div
+// // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // //                 marginTop: 8,
+// // // // // // // // // // // // //                 display: "flex",
+// // // // // // // // // // // // //                 gap: 8,
+// // // // // // // // // // // // //                 flexWrap: "wrap",
+// // // // // // // // // // // // //               }}
+// // // // // // // // // // // // //             >
+// // // // // // // // // // // // //               <Badge color={isIn ? "#4ade80" : "#f87171"}>{m.type || "—"}</Badge>
+// // // // // // // // // // // // //               <Badge color="#60a5fa">{qty}</Badge>
+// // // // // // // // // // // // //               {m._src === "archive" && <Badge color="#c084fc">Archive</Badge>}
+// // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // //           </div>
 // // // // // // // // // // // // //         </div>
-// // // // // // // // // // // // //         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-// // // // // // // // // // // // //           <Badge color="#34d399">{m.type || "—"}</Badge>
-// // // // // // // // // // // // //           <Badge color="#60a5fa">Qté {m.qty ?? "—"}</Badge>
-// // // // // // // // // // // // //           <Badge color="var(--text-secondary)">Article #{m.item_id}</Badge>
-// // // // // // // // // // // // //         </div>
+
 // // // // // // // // // // // // //         <InfoGrid
 // // // // // // // // // // // // //           rows={[
-// // // // // // // // // // // // //             { icon: Package, label: "Article ID", value: m.item_id ?? "—" },
-// // // // // // // // // // // // //             { icon: Warehouse, label: "Entrepôt", value: m.entrepot_id ?? "—" },
-// // // // // // // // // // // // //             { icon: Info, label: "Nature", value: m.nature || "—" },
+// // // // // // // // // // // // //             {
+// // // // // // // // // // // // //               icon: Warehouse,
+// // // // // // // // // // // // //               label: "Entrepôt",
+// // // // // // // // // // // // //               value: entLabel,
+// // // // // // // // // // // // //             },
+// // // // // // // // // // // // //             {
+// // // // // // // // // // // // //               icon: Calendar,
+// // // // // // // // // // // // //               label: "Date",
+// // // // // // // // // // // // //               value: formatDateFr(m.date || m.created_at),
+// // // // // // // // // // // // //             },
+// // // // // // // // // // // // //             { icon: Info, label: "Nature", value: m.nature || m._src || "—" },
+// // // // // // // // // // // // //             { icon: Hash, label: "Raison", value: m.raison || "—" },
 // // // // // // // // // // // // //           ]}
 // // // // // // // // // // // // //         />
 // // // // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
@@ -2968,7 +4163,79 @@
 // // // // // // // // // // // // //   );
 // // // // // // // // // // // // // }
 
-// // // // // // // // // // // // // /* ========== UI ATOMS (comme Details) ========== */
+// // // // // // // // // // // // // function AuditSlide({ log, onOpen }) {
+// // // // // // // // // // // // //   return (
+// // // // // // // // // // // // //     <GlassCard>
+// // // // // // // // // // // // //       <div style={{ padding: "1.5rem" }}>
+// // // // // // // // // // // // //         <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
+// // // // // // // // // // // // //           <div
+// // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // //               width: 64,
+// // // // // // // // // // // // //               height: 64,
+// // // // // // // // // // // // //               borderRadius: 16,
+// // // // // // // // // // // // //               background:
+// // // // // // // // // // // // //                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // // // // //               display: "flex",
+// // // // // // // // // // // // //               alignItems: "center",
+// // // // // // // // // // // // //               justifyContent: "center",
+// // // // // // // // // // // // //               boxShadow: "0 8px 22px var(--glow-color)",
+// // // // // // // // // // // // //             }}
+// // // // // // // // // // // // //           >
+// // // // // // // // // // // // //             <ScrollText size={28} color="#fff" />
+// // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // //           <div>
+// // // // // // // // // // // // //             <div
+// // // // // // // // // // // // //               style={{
+// // // // // // // // // // // // //                 fontFamily: "Syne, sans-serif",
+// // // // // // // // // // // // //                 fontWeight: 900,
+// // // // // // // // // // // // //                 fontSize: "1.2rem",
+// // // // // // // // // // // // //                 color: "var(--text)",
+// // // // // // // // // // // // //               }}
+// // // // // // // // // // // // //             >
+// // // // // // // // // // // // //               {log.action || "Action"}
+// // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // //             <div style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
+// // // // // // // // // // // // //               {log.entity || log.entity_type || "—"}
+// // // // // // // // // // // // //             </div>
+// // // // // // // // // // // // //           </div>
+// // // // // // // // // // // // //         </div>
+// // // // // // // // // // // // //         <InfoGrid
+// // // // // // // // // // // // //           rows={[
+// // // // // // // // // // // // //             { icon: Users, label: "Utilisateur", value: log.user_id ?? "—" },
+// // // // // // // // // // // // //             {
+// // // // // // // // // // // // //               icon: Calendar,
+// // // // // // // // // // // // //               label: "Date",
+// // // // // // // // // // // // //               value: formatDateFr(log.created_at || log.date),
+// // // // // // // // // // // // //             },
+// // // // // // // // // // // // //             {
+// // // // // // // // // // // // //               icon: Clock,
+// // // // // // // // // // // // //               label: "Heure",
+// // // // // // // // // // // // //               value: String(log.created_at || "").slice(11, 19) || "—",
+// // // // // // // // // // // // //             },
+// // // // // // // // // // // // //             { icon: Shield, label: "ID log", value: log.id ?? "—" },
+// // // // // // // // // // // // //           ]}
+// // // // // // // // // // // // //         />
+// // // // // // // // // // // // //         {(log.details || log.message) && (
+// // // // // // // // // // // // //           <p
+// // // // // // // // // // // // //             style={{
+// // // // // // // // // // // // //               marginTop: 12,
+// // // // // // // // // // // // //               color: "var(--text-secondary)",
+// // // // // // // // // // // // //               fontSize: "0.9rem",
+// // // // // // // // // // // // //               lineHeight: 1.5,
+// // // // // // // // // // // // //             }}
+// // // // // // // // // // // // //           >
+// // // // // // // // // // // // //             {log.details || log.message}
+// // // // // // // // // // // // //           </p>
+// // // // // // // // // // // // //         )}
+// // // // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
+// // // // // // // // // // // // //           <ExternalLink size={14} /> Fiche complète
+// // // // // // // // // // // // //         </button>
+// // // // // // // // // // // // //       </div>
+// // // // // // // // // // // // //     </GlassCard>
+// // // // // // // // // // // // //   );
+// // // // // // // // // // // // // }
+
+// // // // // // // // // // // // // /* ========== UI ATOMS ========== */
 // // // // // // // // // // // // // function GlassCard({ children }) {
 // // // // // // // // // // // // //   return (
 // // // // // // // // // // // // //     <div
@@ -3187,10 +4454,13 @@
 
 
 
+
+
+
 // // // // // // // // // // // // /**
-// // // // // // // // // // // //  * DetailsCarousel — /details-carousel/:type?  ou state { type, key }
-// // // // // // // // // // // //  * Support : categorie | article | entrepot | utilisateur | mouvement | audit | archive
-// // // // // // // // // // // //  * Style aligné Details + entrepôt sur mouvements
+// // // // // // // // // // // //  * DetailsCarousel — Detail All
+// // // // // // // // // // // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
+// // // // // // // // // // // //  * State  : { type, key }  (key = "all" | date | id)
 // // // // // // // // // // // //  */
 
 // // // // // // // // // // // // import { useEffect, useMemo, useState } from "react";
@@ -3211,8 +4481,8 @@
 // // // // // // // // // // // //   Info,
 // // // // // // // // // // // //   ExternalLink,
 // // // // // // // // // // // //   Shield,
-// // // // // // // // // // // //   Layers,
 // // // // // // // // // // // //   ScrollText,
+// // // // // // // // // // // //   Layers,
 // // // // // // // // // // // //   Clock,
 // // // // // // // // // // // // } from "lucide-react";
 // // // // // // // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
@@ -3424,7 +4694,7 @@
 // // // // // // // // // // // // };
 
 // // // // // // // // // // // // export default function DetailsCarousel() {
-// // // // // // // // // // // //   const { type: typeParam } = useParams();
+// // // // // // // // // // // //   const { type: typeParam, key: keyParam } = useParams();
 // // // // // // // // // // // //   const location = useLocation();
 // // // // // // // // // // // //   const navigate = useNavigate();
 // // // // // // // // // // // //   const theme =
@@ -3433,7 +4703,9 @@
 
 // // // // // // // // // // // //   const stateType = location.state?.type;
 // // // // // // // // // // // //   const stateKey = location.state?.key; // date | "all" | id
+// // // // // // // // // // // //   // params OU state (routes /details-carousel/:type/:key et navigate avec state)
 // // // // // // // // // // // //   const type = stateType || typeParam || "categorie";
+// // // // // // // // // // // //   const filterKey = stateKey || keyParam || "all";
 
 // // // // // // // // // // // //   const [loading, setLoading] = useState(true);
 // // // // // // // // // // // //   const [items, setItems] = useState([]);
@@ -3527,8 +4799,8 @@
 // // // // // // // // // // // //             (ents.data || []).map((e) => [Number(e.id), e])
 // // // // // // // // // // // //           );
 // // // // // // // // // // // //           let rows = (arch.data || []).filter((m) => Number(m.deleted ?? 0) === 0);
-// // // // // // // // // // // //           if (stateKey && stateKey !== "all") {
-// // // // // // // // // // // //             const key = String(stateKey);
+// // // // // // // // // // // //           if (filterKey && filterKey !== "all") {
+// // // // // // // // // // // //             const key = String(filterKey);
 // // // // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === key);
 // // // // // // // // // // // //           }
 // // // // // // // // // // // //           list = rows
@@ -3545,8 +4817,8 @@
 // // // // // // // // // // // //           let rows = (Array.isArray(raw) ? raw : []).filter(
 // // // // // // // // // // // //             (r) => Number(r.deleted ?? 0) === 0
 // // // // // // // // // // // //           );
-// // // // // // // // // // // //           if (stateKey && stateKey !== "all") {
-// // // // // // // // // // // //             const key = String(stateKey);
+// // // // // // // // // // // //           if (filterKey && filterKey !== "all") {
+// // // // // // // // // // // //             const key = String(filterKey);
 // // // // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === key);
 // // // // // // // // // // // //           }
 // // // // // // // // // // // //           list = rows.sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
@@ -3565,7 +4837,7 @@
 // // // // // // // // // // // //     return () => {
 // // // // // // // // // // // //       cancelled = true;
 // // // // // // // // // // // //     };
-// // // // // // // // // // // //   }, [type, stateKey]);
+// // // // // // // // // // // //   }, [type, filterKey]);
 
 // // // // // // // // // // // //   const current = items[index] || null;
 // // // // // // // // // // // //   const prev = () => setIndex((i) => (i > 0 ? i - 1 : items.length - 1));
@@ -3645,7 +4917,7 @@
 // // // // // // // // // // // //             }}
 // // // // // // // // // // // //           >
 // // // // // // // // // // // //             {TYPE_LABEL[type] || type}
-// // // // // // // // // // // //             {stateKey && stateKey !== "all" ? ` · ${formatDateFr(stateKey)}` : ""}
+// // // // // // // // // // // //             {filterKey && filterKey !== "all" ? ` · ${formatDateFr(filterKey)}` : ""}
 // // // // // // // // // // // //           </div>
 // // // // // // // // // // // //           <div style={{ width: 88 }} />
 // // // // // // // // // // // //         </div>
@@ -4455,8 +5727,6 @@
 
 
 
-
-
 // // // // // // // // // // // /**
 // // // // // // // // // // //  * DetailsCarousel — Detail All
 // // // // // // // // // // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
@@ -4484,6 +5754,7 @@
 // // // // // // // // // // //   ScrollText,
 // // // // // // // // // // //   Layers,
 // // // // // // // // // // //   Clock,
+// // // // // // // // // // //   Download,
 // // // // // // // // // // // } from "lucide-react";
 // // // // // // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
 // // // // // // // // // // // import Footer from "../components/Footer";
@@ -4682,6 +5953,62 @@
 // // // // // // // // // // //   });
 // // // // // // // // // // //   return total;
 // // // // // // // // // // // };
+
+
+// // // // // // // // // // // async function exportCarouselPdf(type, rows) {
+// // // // // // // // // // //   const loadScript = (src) =>
+// // // // // // // // // // //     new Promise((resolve, reject) => {
+// // // // // // // // // // //       if (document.querySelector(`script[src="${src}"]`)) return resolve();
+// // // // // // // // // // //       const s = document.createElement("script");
+// // // // // // // // // // //       s.src = src;
+// // // // // // // // // // //       s.async = true;
+// // // // // // // // // // //       s.onload = () => resolve();
+// // // // // // // // // // //       s.onerror = reject;
+// // // // // // // // // // //       document.head.appendChild(s);
+// // // // // // // // // // //     });
+// // // // // // // // // // //   if (!window.jspdf?.jsPDF) {
+// // // // // // // // // // //     await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+// // // // // // // // // // //   }
+// // // // // // // // // // //   const jsPDF = window.jspdf?.jsPDF;
+// // // // // // // // // // //   if (!jsPDF) throw new Error("jsPDF non chargé");
+// // // // // // // // // // //   const doc = new jsPDF({ unit: "mm", format: "a4" });
+// // // // // // // // // // //   const title =
+// // // // // // // // // // //     type === "audit" ? "Journal d'audit — StockFlow" : "Archives mouvements — StockFlow";
+// // // // // // // // // // //   doc.setFontSize(16);
+// // // // // // // // // // //   doc.text(title, 14, 18);
+// // // // // // // // // // //   doc.setFontSize(10);
+// // // // // // // // // // //   doc.setTextColor(90);
+// // // // // // // // // // //   doc.text("L'étoile du matin", 14, 25);
+// // // // // // // // // // //   doc.setTextColor(20);
+// // // // // // // // // // //   let y = 34;
+// // // // // // // // // // //   const list = rows || [];
+// // // // // // // // // // //   if (!list.length) {
+// // // // // // // // // // //     doc.text("Aucun élément.", 14, y);
+// // // // // // // // // // //   }
+// // // // // // // // // // //   list.forEach((row, i) => {
+// // // // // // // // // // //     if (y > 275) {
+// // // // // // // // // // //       doc.addPage();
+// // // // // // // // // // //       y = 18;
+// // // // // // // // // // //     }
+// // // // // // // // // // //     let line = "";
+// // // // // // // // // // //     if (type === "audit") {
+// // // // // // // // // // //       const when = String(row.created_at || row.date || "").slice(0, 19);
+// // // // // // // // // // //       line = `${i + 1}. ${when} · ${row.action || "—"} · ${row.entity || row.entity_type || ""} · user #${row.user_id ?? "—"} · ${row.details || row.message || ""}`;
+// // // // // // // // // // //     } else {
+// // // // // // // // // // //       const it = row._item;
+// // // // // // // // // // //       const name = it
+// // // // // // // // // // //         ? [it.name, it.mark, it.modele].filter(Boolean).join(" · ")
+// // // // // // // // // // //         : `Article #${row.item_id}`;
+// // // // // // // // // // //       const ent = row._entrepot?.name || row._entrepot?.reference || (row.entrepot_id != null ? `Entrepôt #${row.entrepot_id}` : "—");
+// // // // // // // // // // //       line = `${i + 1}. ${String(row.date || row.created_at || "").slice(0, 10)} · ${row.type || "—"} · ${name} · ${ent} · qty ${row.qty ?? "—"} · ${row.nature || ""}`;
+// // // // // // // // // // //     }
+// // // // // // // // // // //     const wrapped = doc.splitTextToSize(line, 180);
+// // // // // // // // // // //     doc.text(wrapped, 14, y);
+// // // // // // // // // // //     y += wrapped.length * 5 + 2;
+// // // // // // // // // // //   });
+// // // // // // // // // // //   const stamp = new Date().toISOString().slice(0, 10);
+// // // // // // // // // // //   doc.save(type === "audit" ? `audit_${stamp}.pdf` : `archives_${stamp}.pdf`);
+// // // // // // // // // // // }
 
 // // // // // // // // // // // const TYPE_LABEL = {
 // // // // // // // // // // //   categorie: "Catégories",
@@ -4919,7 +6246,18 @@
 // // // // // // // // // // //             {TYPE_LABEL[type] || type}
 // // // // // // // // // // //             {filterKey && filterKey !== "all" ? ` · ${formatDateFr(filterKey)}` : ""}
 // // // // // // // // // // //           </div>
-// // // // // // // // // // //           <div style={{ width: 88 }} />
+// // // // // // // // // // //           {(type === "audit" || type === "archive") ? (
+// // // // // // // // // // //             <button
+// // // // // // // // // // //               type="button"
+// // // // // // // // // // //               onClick={() => exportCarouselPdf(type, items).catch((e) => alert(e.message || "Export impossible"))}
+// // // // // // // // // // //               style={topBtn}
+// // // // // // // // // // //               disabled={!items.length}
+// // // // // // // // // // //             >
+// // // // // // // // // // //               <Download size={16} /> Export PDF
+// // // // // // // // // // //             </button>
+// // // // // // // // // // //           ) : (
+// // // // // // // // // // //             <div style={{ width: 88 }} />
+// // // // // // // // // // //           )}
 // // // // // // // // // // //         </div>
 
 // // // // // // // // // // //         {/* ARROW UP */}
@@ -5727,13 +7065,15 @@
 
 
 
+
+
 // // // // // // // // // // /**
 // // // // // // // // // //  * DetailsCarousel — Detail All
 // // // // // // // // // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
-// // // // // // // // // //  * State  : { type, key }  (key = "all" | date | id)
+// // // // // // // // // //  * Style + export PDF normalisés (même hiérarchie que Details)
 // // // // // // // // // //  */
 
-// // // // // // // // // // import { useEffect, useMemo, useState } from "react";
+// // // // // // // // // // import { useEffect, useState, useCallback } from "react";
 // // // // // // // // // // import { useNavigate, useParams, useLocation } from "react-router-dom";
 // // // // // // // // // // import {
 // // // // // // // // // //   ArrowLeft,
@@ -5743,7 +7083,6 @@
 // // // // // // // // // //   Tag,
 // // // // // // // // // //   Warehouse,
 // // // // // // // // // //   Users,
-// // // // // // // // // //   ArrowLeftRight,
 // // // // // // // // // //   Image as ImageIcon,
 // // // // // // // // // //   Calendar,
 // // // // // // // // // //   Hash,
@@ -5751,10 +7090,14 @@
 // // // // // // // // // //   Info,
 // // // // // // // // // //   ExternalLink,
 // // // // // // // // // //   Shield,
-// // // // // // // // // //   ScrollText,
 // // // // // // // // // //   Layers,
+// // // // // // // // // //   ScrollText,
 // // // // // // // // // //   Clock,
 // // // // // // // // // //   Download,
+// // // // // // // // // //   FileText,
+// // // // // // // // // //   CheckCircle,
+// // // // // // // // // //   Share2,
+// // // // // // // // // //   ArrowLeftRight,
 // // // // // // // // // // } from "lucide-react";
 // // // // // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
 // // // // // // // // // // import Footer from "../components/Footer";
@@ -5777,24 +7120,21 @@
 // // // // // // // // // //     ? api.getAjustements
 // // // // // // // // // //     : async () => ({ data: [] });
 // // // // // // // // // // const getAuditLogs =
-// // // // // // // // // //   typeof api.getAuditLogs === "function"
-// // // // // // // // // //     ? api.getAuditLogs
-// // // // // // // // // //     : async () => ({ data: [] });
+// // // // // // // // // //   typeof api.getAuditLogs === "function" ? api.getAuditLogs : async () => ({ data: [] });
 // // // // // // // // // // const getMouvementsArchives =
 // // // // // // // // // //   typeof api.getMouvementsArchives === "function"
 // // // // // // // // // //     ? api.getMouvementsArchives
 // // // // // // // // // //     : async () => ({ data: [] });
 
-// // // // // // // // // // /* ========== HELPERS ========== */
+// // // // // // // // // // const APP_NAME = "StockFlow";
+// // // // // // // // // // const COMPANY_NAME = "L'étoile du matin";
+
 // // // // // // // // // // function buildImageFileName(item) {
 // // // // // // // // // //   const parts = [item?.name, item?.mark, item?.modele]
 // // // // // // // // // //     .map((p) => (p || "").toString().trim())
 // // // // // // // // // //     .filter(Boolean)
 // // // // // // // // // //     .map((p) =>
-// // // // // // // // // //       p
-// // // // // // // // // //         .replace(/[^\w\u00C0-\u024F\-]+/gi, "_")
-// // // // // // // // // //         .replace(/_+/g, "_")
-// // // // // // // // // //         .replace(/^_|_$/g, "")
+// // // // // // // // // //       p.replace(/[^\w\u00C0-\u024F\-]+/gi, "_").replace(/_+/g, "_").replace(/^_|_$/g, "")
 // // // // // // // // // //     );
 // // // // // // // // // //   return parts.length ? parts.join("_") : null;
 // // // // // // // // // // }
@@ -5816,12 +7156,7 @@
 // // // // // // // // // //   if (!icon || typeof icon !== "string") return null;
 // // // // // // // // // //   let s = icon.trim();
 // // // // // // // // // //   if (!s) return null;
-// // // // // // // // // //   if (
-// // // // // // // // // //     s.startsWith("data:") ||
-// // // // // // // // // //     s.startsWith("http://") ||
-// // // // // // // // // //     s.startsWith("https://") ||
-// // // // // // // // // //     s.startsWith("blob:")
-// // // // // // // // // //   )
+// // // // // // // // // //   if (s.startsWith("data:") || s.startsWith("http://") || s.startsWith("https://") || s.startsWith("blob:"))
 // // // // // // // // // //     return s;
 // // // // // // // // // //   if (s.startsWith("/") && s.length < 400) return s;
 // // // // // // // // // //   if (s.length <= 8) return null;
@@ -5841,13 +7176,6 @@
 // // // // // // // // // //   return [item.name, item.mark, item.modele].filter(Boolean).join(" · ") || "—";
 // // // // // // // // // // }
 
-// // // // // // // // // // function parseCategoryName(cat) {
-// // // // // // // // // //   const raw = (cat?.name || "").trim();
-// // // // // // // // // //   const m = raw.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*(.*)$/u);
-// // // // // // // // // //   if (m) return { emoji: m[1], name: m[2] || raw };
-// // // // // // // // // //   return { emoji: "📂", name: raw || "Catégorie" };
-// // // // // // // // // // }
-
 // // // // // // // // // // function formatDateFr(iso) {
 // // // // // // // // // //   if (!iso || iso === "—") return "—";
 // // // // // // // // // //   const s = String(iso).slice(0, 10);
@@ -5865,8 +7193,7 @@
 
 // // // // // // // // // // function dateKeyOf(row) {
 // // // // // // // // // //   return (
-// // // // // // // // // //     (row.date || row.created_at || row.update_at || "").toString().slice(0, 10) ||
-// // // // // // // // // //     "—"
+// // // // // // // // // //     (row.date || row.created_at || row.update_at || "").toString().slice(0, 10) || "—"
 // // // // // // // // // //   );
 // // // // // // // // // // }
 
@@ -5954,60 +7281,23 @@
 // // // // // // // // // //   return total;
 // // // // // // // // // // };
 
-
-// // // // // // // // // // async function exportCarouselPdf(type, rows) {
-// // // // // // // // // //   const loadScript = (src) =>
-// // // // // // // // // //     new Promise((resolve, reject) => {
-// // // // // // // // // //       if (document.querySelector(`script[src="${src}"]`)) return resolve();
-// // // // // // // // // //       const s = document.createElement("script");
-// // // // // // // // // //       s.src = src;
-// // // // // // // // // //       s.async = true;
-// // // // // // // // // //       s.onload = () => resolve();
-// // // // // // // // // //       s.onerror = reject;
-// // // // // // // // // //       document.head.appendChild(s);
-// // // // // // // // // //     });
-// // // // // // // // // //   if (!window.jspdf?.jsPDF) {
-// // // // // // // // // //     await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-// // // // // // // // // //   }
-// // // // // // // // // //   const jsPDF = window.jspdf?.jsPDF;
-// // // // // // // // // //   if (!jsPDF) throw new Error("jsPDF non chargé");
-// // // // // // // // // //   const doc = new jsPDF({ unit: "mm", format: "a4" });
-// // // // // // // // // //   const title =
-// // // // // // // // // //     type === "audit" ? "Journal d'audit — StockFlow" : "Archives mouvements — StockFlow";
-// // // // // // // // // //   doc.setFontSize(16);
-// // // // // // // // // //   doc.text(title, 14, 18);
-// // // // // // // // // //   doc.setFontSize(10);
-// // // // // // // // // //   doc.setTextColor(90);
-// // // // // // // // // //   doc.text("L'étoile du matin", 14, 25);
-// // // // // // // // // //   doc.setTextColor(20);
-// // // // // // // // // //   let y = 34;
-// // // // // // // // // //   const list = rows || [];
-// // // // // // // // // //   if (!list.length) {
-// // // // // // // // // //     doc.text("Aucun élément.", 14, y);
-// // // // // // // // // //   }
-// // // // // // // // // //   list.forEach((row, i) => {
-// // // // // // // // // //     if (y > 275) {
-// // // // // // // // // //       doc.addPage();
-// // // // // // // // // //       y = 18;
-// // // // // // // // // //     }
-// // // // // // // // // //     let line = "";
-// // // // // // // // // //     if (type === "audit") {
-// // // // // // // // // //       const when = String(row.created_at || row.date || "").slice(0, 19);
-// // // // // // // // // //       line = `${i + 1}. ${when} · ${row.action || "—"} · ${row.entity || row.entity_type || ""} · user #${row.user_id ?? "—"} · ${row.details || row.message || ""}`;
-// // // // // // // // // //     } else {
-// // // // // // // // // //       const it = row._item;
-// // // // // // // // // //       const name = it
-// // // // // // // // // //         ? [it.name, it.mark, it.modele].filter(Boolean).join(" · ")
-// // // // // // // // // //         : `Article #${row.item_id}`;
-// // // // // // // // // //       const ent = row._entrepot?.name || row._entrepot?.reference || (row.entrepot_id != null ? `Entrepôt #${row.entrepot_id}` : "—");
-// // // // // // // // // //       line = `${i + 1}. ${String(row.date || row.created_at || "").slice(0, 10)} · ${row.type || "—"} · ${name} · ${ent} · qty ${row.qty ?? "—"} · ${row.nature || ""}`;
-// // // // // // // // // //     }
-// // // // // // // // // //     const wrapped = doc.splitTextToSize(line, 180);
-// // // // // // // // // //     doc.text(wrapped, 14, y);
-// // // // // // // // // //     y += wrapped.length * 5 + 2;
+// // // // // // // // // // function loadScript(src) {
+// // // // // // // // // //   return new Promise((resolve, reject) => {
+// // // // // // // // // //     if (document.querySelector(`script[src="${src}"]`)) return resolve();
+// // // // // // // // // //     const s = document.createElement("script");
+// // // // // // // // // //     s.src = src;
+// // // // // // // // // //     s.async = true;
+// // // // // // // // // //     s.onload = () => resolve();
+// // // // // // // // // //     s.onerror = reject;
+// // // // // // // // // //     document.head.appendChild(s);
 // // // // // // // // // //   });
-// // // // // // // // // //   const stamp = new Date().toISOString().slice(0, 10);
-// // // // // // // // // //   doc.save(type === "audit" ? `audit_${stamp}.pdf` : `archives_${stamp}.pdf`);
+// // // // // // // // // // }
+
+// // // // // // // // // // async function loadJsPDF() {
+// // // // // // // // // //   if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+// // // // // // // // // //   await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+// // // // // // // // // //   if (!window.jspdf?.jsPDF) throw new Error("jsPDF non chargé");
+// // // // // // // // // //   return window.jspdf.jsPDF;
 // // // // // // // // // // }
 
 // // // // // // // // // // const TYPE_LABEL = {
@@ -6020,6 +7310,16 @@
 // // // // // // // // // //   archive: "Archives mouvements",
 // // // // // // // // // // };
 
+// // // // // // // // // // const TYPE_ICON = {
+// // // // // // // // // //   categorie: Tag,
+// // // // // // // // // //   article: Package,
+// // // // // // // // // //   entrepot: Warehouse,
+// // // // // // // // // //   utilisateur: Users,
+// // // // // // // // // //   mouvement: ArrowLeftRight,
+// // // // // // // // // //   audit: Shield,
+// // // // // // // // // //   archive: Layers,
+// // // // // // // // // // };
+
 // // // // // // // // // // export default function DetailsCarousel() {
 // // // // // // // // // //   const { type: typeParam, key: keyParam } = useParams();
 // // // // // // // // // //   const location = useLocation();
@@ -6028,16 +7328,20 @@
 // // // // // // // // // //     (typeof sessionStorage !== "undefined" && sessionStorage.getItem("theme")) ||
 // // // // // // // // // //     "dark-galaxy";
 
-// // // // // // // // // //   const stateType = location.state?.type;
-// // // // // // // // // //   const stateKey = location.state?.key; // date | "all" | id
-// // // // // // // // // //   // params OU state (routes /details-carousel/:type/:key et navigate avec state)
-// // // // // // // // // //   const type = stateType || typeParam || "categorie";
-// // // // // // // // // //   const filterKey = stateKey || keyParam || "all";
+// // // // // // // // // //   const type = location.state?.type || typeParam || "categorie";
+// // // // // // // // // //   const filterKey = location.state?.key || keyParam || "all";
 
 // // // // // // // // // //   const [loading, setLoading] = useState(true);
 // // // // // // // // // //   const [items, setItems] = useState([]);
 // // // // // // // // // //   const [index, setIndex] = useState(0);
 // // // // // // // // // //   const [error, setError] = useState("");
+// // // // // // // // // //   const [pdfOpen, setPdfOpen] = useState(false);
+// // // // // // // // // //   const [pdfPhase, setPdfPhase] = useState("preview");
+// // // // // // // // // //   const [pdfBusy, setPdfBusy] = useState(false);
+// // // // // // // // // //   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+// // // // // // // // // //   const [pdfFileName, setPdfFileName] = useState("export.pdf");
+
+// // // // // // // // // //   const MetaIcon = TYPE_ICON[type] || Package;
 
 // // // // // // // // // //   useEffect(() => {
 // // // // // // // // // //     let cancelled = false;
@@ -6054,7 +7358,6 @@
 // // // // // // // // // //         const stocks = stocksRes.data || [];
 // // // // // // // // // //         const mouvements = mvtRes.data || [];
 // // // // // // // // // //         const ajustements = ajRes.data || [];
-
 // // // // // // // // // //         let list = [];
 
 // // // // // // // // // //         if (type === "categorie") {
@@ -6096,12 +7399,8 @@
 // // // // // // // // // //             getItems().catch(() => ({ data: [] })),
 // // // // // // // // // //             getEntrepots().catch(() => ({ data: [] })),
 // // // // // // // // // //           ]);
-// // // // // // // // // //           const itemMap = Object.fromEntries(
-// // // // // // // // // //             (its.data || []).map((i) => [Number(i.id), i])
-// // // // // // // // // //           );
-// // // // // // // // // //           const entMap = Object.fromEntries(
-// // // // // // // // // //             (ents.data || []).map((e) => [Number(e.id), e])
-// // // // // // // // // //           );
+// // // // // // // // // //           const itemMap = Object.fromEntries((its.data || []).map((i) => [Number(i.id), i]));
+// // // // // // // // // //           const entMap = Object.fromEntries((ents.data || []).map((e) => [Number(e.id), e]));
 // // // // // // // // // //           list = [
 // // // // // // // // // //             ...mouvements.map((m) => ({ ...m, _src: "recent" })),
 // // // // // // // // // //             ...ajustements.map((m) => ({ ...m, _src: "ajustment" })),
@@ -6119,16 +7418,11 @@
 // // // // // // // // // //             getItems().catch(() => ({ data: [] })),
 // // // // // // // // // //             getEntrepots().catch(() => ({ data: [] })),
 // // // // // // // // // //           ]);
-// // // // // // // // // //           const itemMap = Object.fromEntries(
-// // // // // // // // // //             (its.data || []).map((i) => [Number(i.id), i])
-// // // // // // // // // //           );
-// // // // // // // // // //           const entMap = Object.fromEntries(
-// // // // // // // // // //             (ents.data || []).map((e) => [Number(e.id), e])
-// // // // // // // // // //           );
+// // // // // // // // // //           const itemMap = Object.fromEntries((its.data || []).map((i) => [Number(i.id), i]));
+// // // // // // // // // //           const entMap = Object.fromEntries((ents.data || []).map((e) => [Number(e.id), e]));
 // // // // // // // // // //           let rows = (arch.data || []).filter((m) => Number(m.deleted ?? 0) === 0);
 // // // // // // // // // //           if (filterKey && filterKey !== "all") {
-// // // // // // // // // //             const key = String(filterKey);
-// // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === key);
+// // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === String(filterKey));
 // // // // // // // // // //           }
 // // // // // // // // // //           list = rows
 // // // // // // // // // //             .map((m) => ({
@@ -6145,8 +7439,7 @@
 // // // // // // // // // //             (r) => Number(r.deleted ?? 0) === 0
 // // // // // // // // // //           );
 // // // // // // // // // //           if (filterKey && filterKey !== "all") {
-// // // // // // // // // //             const key = String(filterKey);
-// // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === key);
+// // // // // // // // // //             rows = rows.filter((r) => dateKeyOf(r) === String(filterKey));
 // // // // // // // // // //           }
 // // // // // // // // // //           list = rows.sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
 // // // // // // // // // //         } else {
@@ -6193,6 +7486,128 @@
 // // // // // // // // // //     navigate(`/details/${type}/${current.id}`);
 // // // // // // // // // //   };
 
+// // // // // // // // // //   const previewLines = useCallback(() => {
+// // // // // // // // // //     const lines = [
+// // // // // // // // // //       `Collection : ${TYPE_LABEL[type] || type}`,
+// // // // // // // // // //       `Filtre : ${filterKey === "all" ? "Tous" : formatDateFr(filterKey)}`,
+// // // // // // // // // //       `Éléments : ${items.length}`,
+// // // // // // // // // //       `Fiche affichée : ${index + 1} / ${items.length || 1}`,
+// // // // // // // // // //     ];
+// // // // // // // // // //     if (current) {
+// // // // // // // // // //       if (type === "article") lines.push(`Article : ${designation(current)}`);
+// // // // // // // // // //       else if (type === "categorie") lines.push(`Catégorie : ${current.name}`);
+// // // // // // // // // //       else if (type === "entrepot")
+// // // // // // // // // //         lines.push(`Entrepôt : ${current.name || current.reference}`);
+// // // // // // // // // //       else if (type === "utilisateur")
+// // // // // // // // // //         lines.push(`User : ${current.first_name || ""} ${current.name || ""}`);
+// // // // // // // // // //       else if (type === "audit")
+// // // // // // // // // //         lines.push(`Action : ${current.action || "—"}`);
+// // // // // // // // // //       else if (type === "mouvement" || type === "archive")
+// // // // // // // // // //         lines.push(
+// // // // // // // // // //           `Mvt : ${current.type || "—"} · ${
+// // // // // // // // // //             current._item ? designation(current._item) : `#${current.item_id}`
+// // // // // // // // // //           }`
+// // // // // // // // // //         );
+// // // // // // // // // //     }
+// // // // // // // // // //     return lines;
+// // // // // // // // // //   }, [type, filterKey, items.length, index, current]);
+
+// // // // // // // // // //   const generatePdf = async () => {
+// // // // // // // // // //     setPdfBusy(true);
+// // // // // // // // // //     setPdfPhase("loading");
+// // // // // // // // // //     try {
+// // // // // // // // // //       const jsPDF = await loadJsPDF();
+// // // // // // // // // //       const doc = new jsPDF({ unit: "mm", format: "a4" });
+// // // // // // // // // //       doc.setFillColor(30, 41, 59);
+// // // // // // // // // //       doc.rect(0, 0, 210, 28, "F");
+// // // // // // // // // //       doc.setTextColor(255, 255, 255);
+// // // // // // // // // //       doc.setFontSize(16);
+// // // // // // // // // //       doc.text(APP_NAME, 14, 12);
+// // // // // // // // // //       doc.setFontSize(10);
+// // // // // // // // // //       doc.text(COMPANY_NAME, 14, 20);
+// // // // // // // // // //       doc.setTextColor(40);
+// // // // // // // // // //       doc.setFontSize(13);
+// // // // // // // // // //       doc.text(TYPE_LABEL[type] || type, 14, 40);
+// // // // // // // // // //       doc.setFontSize(10);
+// // // // // // // // // //       doc.setTextColor(100);
+// // // // // // // // // //       doc.text(
+// // // // // // // // // //         `Export complet · ${filterKey === "all" ? "Tous" : filterKey} · ${new Date().toLocaleString("fr-FR")}`,
+// // // // // // // // // //         14,
+// // // // // // // // // //         47
+// // // // // // // // // //       );
+// // // // // // // // // //       doc.setTextColor(30);
+// // // // // // // // // //       let y = 56;
+// // // // // // // // // //       items.forEach((row, i) => {
+// // // // // // // // // //         if (y > 270) {
+// // // // // // // // // //           doc.addPage();
+// // // // // // // // // //           y = 18;
+// // // // // // // // // //         }
+// // // // // // // // // //         let line = "";
+// // // // // // // // // //         if (type === "audit") {
+// // // // // // // // // //           line = `${i + 1}. ${String(row.created_at || "").slice(0, 19)} · ${row.action || "—"} · ${row.entity || ""} · user #${row.user_id ?? "—"}`;
+// // // // // // // // // //         } else if (type === "mouvement" || type === "archive") {
+// // // // // // // // // //           const it = row._item;
+// // // // // // // // // //           const name = it ? designation(it) : `#${row.item_id}`;
+// // // // // // // // // //           const ent =
+// // // // // // // // // //             row._entrepot?.name ||
+// // // // // // // // // //             row._entrepot?.reference ||
+// // // // // // // // // //             (row.entrepot_id != null ? `#${row.entrepot_id}` : "—");
+// // // // // // // // // //           line = `${i + 1}. ${dateKeyOf(row)} · ${row.type || "—"} · ${name} · ${ent} · qty ${row.qty ?? "—"}`;
+// // // // // // // // // //         } else if (type === "article") {
+// // // // // // // // // //           line = `${i + 1}. ${designation(row)} · stock ${convertirQuantite(row.stockReel, row)}`;
+// // // // // // // // // //         } else if (type === "categorie") {
+// // // // // // // // // //           line = `${i + 1}. ${row.name} · ${(row._articles || []).length} articles`;
+// // // // // // // // // //         } else if (type === "entrepot") {
+// // // // // // // // // //           line = `${i + 1}. ${row.name || row.reference} · ${row.location || ""}`;
+// // // // // // // // // //         } else if (type === "utilisateur") {
+// // // // // // // // // //           line = `${i + 1}. ${row.first_name || ""} ${row.name || ""} · ${row.email || ""} · ${row.role || ""}`;
+// // // // // // // // // //         } else {
+// // // // // // // // // //           line = `${i + 1}. #${row.id}`;
+// // // // // // // // // //         }
+// // // // // // // // // //         const wrapped = doc.splitTextToSize(line, 180);
+// // // // // // // // // //         doc.text(wrapped, 14, y);
+// // // // // // // // // //         y += wrapped.length * 5 + 2;
+// // // // // // // // // //       });
+// // // // // // // // // //       const blob = doc.output("blob");
+// // // // // // // // // //       if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+// // // // // // // // // //       const url = URL.createObjectURL(blob);
+// // // // // // // // // //       const fname = `carousel_${type}_${new Date().toISOString().slice(0, 10)}.pdf`;
+// // // // // // // // // //       setPdfBlobUrl(url);
+// // // // // // // // // //       setPdfFileName(fname);
+// // // // // // // // // //       await new Promise((r) => setTimeout(r, 900));
+// // // // // // // // // //       setPdfPhase("success");
+// // // // // // // // // //     } catch (e) {
+// // // // // // // // // //       alert(e.message || "Échec export");
+// // // // // // // // // //       setPdfPhase("preview");
+// // // // // // // // // //     } finally {
+// // // // // // // // // //       setPdfBusy(false);
+// // // // // // // // // //     }
+// // // // // // // // // //   };
+
+// // // // // // // // // //   const closeExport = () => {
+// // // // // // // // // //     if (pdfBusy) return;
+// // // // // // // // // //     setPdfOpen(false);
+// // // // // // // // // //     setPdfPhase("preview");
+// // // // // // // // // //   };
+
+// // // // // // // // // //   const sharePdf = async () => {
+// // // // // // // // // //     if (!pdfBlobUrl) return;
+// // // // // // // // // //     try {
+// // // // // // // // // //       const blob = await fetch(pdfBlobUrl).then((r) => r.blob());
+// // // // // // // // // //       const file = new File([blob], pdfFileName, { type: "application/pdf" });
+// // // // // // // // // //       if (navigator.share && navigator.canShare?.({ files: [file] })) {
+// // // // // // // // // //         await navigator.share({ title: `${APP_NAME} — ${TYPE_LABEL[type]}`, files: [file] });
+// // // // // // // // // //       } else {
+// // // // // // // // // //         const a = document.createElement("a");
+// // // // // // // // // //         a.href = pdfBlobUrl;
+// // // // // // // // // //         a.download = pdfFileName;
+// // // // // // // // // //         a.click();
+// // // // // // // // // //       }
+// // // // // // // // // //     } catch {
+// // // // // // // // // //       /* cancel */
+// // // // // // // // // //     }
+// // // // // // // // // //   };
+
 // // // // // // // // // //   return (
 // // // // // // // // // //     <div
 // // // // // // // // // //       style={{
@@ -6202,10 +7617,7 @@
 // // // // // // // // // //         ...(typeof themeCssVars === "function" ? themeCssVars(theme) : {}),
 // // // // // // // // // //       }}
 // // // // // // // // // //     >
-// // // // // // // // // //       <div
-// // // // // // // // // //         aria-hidden
-// // // // // // // // // //         style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}
-// // // // // // // // // //       >
+// // // // // // // // // //       <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
 // // // // // // // // // //         <ThemeBackground theme={theme} />
 // // // // // // // // // //       </div>
 
@@ -6220,7 +7632,7 @@
 // // // // // // // // // //           boxSizing: "border-box",
 // // // // // // // // // //         }}
 // // // // // // // // // //       >
-// // // // // // // // // //         {/* TOP BAR */}
+// // // // // // // // // //         {/* TOP */}
 // // // // // // // // // //         <div
 // // // // // // // // // //           style={{
 // // // // // // // // // //             display: "flex",
@@ -6235,32 +7647,95 @@
 // // // // // // // // // //           <button type="button" onClick={() => navigate(-1)} style={topBtn}>
 // // // // // // // // // //             <ArrowLeft size={16} /> Retour
 // // // // // // // // // //           </button>
+// // // // // // // // // //           <button
+// // // // // // // // // //             type="button"
+// // // // // // // // // //             onClick={() => {
+// // // // // // // // // //               setPdfPhase("preview");
+// // // // // // // // // //               setPdfOpen(true);
+// // // // // // // // // //             }}
+// // // // // // // // // //             style={topBtn}
+// // // // // // // // // //             disabled={!items.length}
+// // // // // // // // // //           >
+// // // // // // // // // //             <Download size={16} /> Exporter PDF
+// // // // // // // // // //           </button>
+// // // // // // // // // //         </div>
+
+// // // // // // // // // //         {/* HEADER uniform */}
+// // // // // // // // // //         <div
+// // // // // // // // // //           style={{
+// // // // // // // // // //             display: "flex",
+// // // // // // // // // //             flexDirection: "column",
+// // // // // // // // // //             alignItems: "center",
+// // // // // // // // // //             textAlign: "center",
+// // // // // // // // // //             marginBottom: "1.2rem",
+// // // // // // // // // //             gap: "0.55rem",
+// // // // // // // // // //           }}
+// // // // // // // // // //         >
 // // // // // // // // // //           <div
 // // // // // // // // // //             style={{
+// // // // // // // // // //               width: 64,
+// // // // // // // // // //               height: 64,
+// // // // // // // // // //               borderRadius: 18,
+// // // // // // // // // //               display: "flex",
+// // // // // // // // // //               alignItems: "center",
+// // // // // // // // // //               justifyContent: "center",
+// // // // // // // // // //               background: "linear-gradient(145deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // //               color: "#fff",
+// // // // // // // // // //               boxShadow: "0 12px 32px var(--glow-color)",
+// // // // // // // // // //               position: "relative",
+// // // // // // // // // //               overflow: "hidden",
+// // // // // // // // // //             }}
+// // // // // // // // // //           >
+// // // // // // // // // //             <div
+// // // // // // // // // //               style={{
+// // // // // // // // // //                 position: "absolute",
+// // // // // // // // // //                 top: 6,
+// // // // // // // // // //                 left: 10,
+// // // // // // // // // //                 width: 16,
+// // // // // // // // // //                 height: 8,
+// // // // // // // // // //                 borderRadius: "50%",
+// // // // // // // // // //                 background: "rgba(255,255,255,0.45)",
+// // // // // // // // // //                 transform: "rotate(-20deg)",
+// // // // // // // // // //               }}
+// // // // // // // // // //             />
+// // // // // // // // // //             <MetaIcon size={26} />
+// // // // // // // // // //           </div>
+// // // // // // // // // //           <div
+// // // // // // // // // //             style={{
+// // // // // // // // // //               display: "inline-flex",
+// // // // // // // // // //               padding: "4px 12px",
+// // // // // // // // // //               borderRadius: 999,
+// // // // // // // // // //               background: "var(--glass-bg)",
+// // // // // // // // // //               border: "1px solid var(--glass-border)",
+// // // // // // // // // //               color: "var(--gradient-start)",
+// // // // // // // // // //               fontSize: "0.7rem",
+// // // // // // // // // //               fontWeight: 700,
+// // // // // // // // // //               letterSpacing: ".08em",
+// // // // // // // // // //               textTransform: "uppercase",
+// // // // // // // // // //             }}
+// // // // // // // // // //           >
+// // // // // // // // // //             Detail All
+// // // // // // // // // //           </div>
+// // // // // // // // // //           <h1
+// // // // // // // // // //             style={{
 // // // // // // // // // //               fontFamily: "Syne, sans-serif",
-// // // // // // // // // //               fontWeight: 800,
-// // // // // // // // // //               color: "var(--text)",
-// // // // // // // // // //               fontSize: "1rem",
+// // // // // // // // // //               fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
+// // // // // // // // // //               fontWeight: 900,
+// // // // // // // // // //               margin: 0,
+// // // // // // // // // //               background: "linear-gradient(135deg, var(--text), var(--gradient-start))",
+// // // // // // // // // //               WebkitBackgroundClip: "text",
+// // // // // // // // // //               WebkitTextFillColor: "transparent",
+// // // // // // // // // //               backgroundClip: "text",
 // // // // // // // // // //             }}
 // // // // // // // // // //           >
 // // // // // // // // // //             {TYPE_LABEL[type] || type}
 // // // // // // // // // //             {filterKey && filterKey !== "all" ? ` · ${formatDateFr(filterKey)}` : ""}
-// // // // // // // // // //           </div>
-// // // // // // // // // //           {(type === "audit" || type === "archive") ? (
-// // // // // // // // // //             <button
-// // // // // // // // // //               type="button"
-// // // // // // // // // //               onClick={() => exportCarouselPdf(type, items).catch((e) => alert(e.message || "Export impossible"))}
-// // // // // // // // // //               style={topBtn}
-// // // // // // // // // //               disabled={!items.length}
-// // // // // // // // // //             >
-// // // // // // // // // //               <Download size={16} /> Export PDF
-// // // // // // // // // //             </button>
-// // // // // // // // // //           ) : (
-// // // // // // // // // //             <div style={{ width: 88 }} />
-// // // // // // // // // //           )}
+// // // // // // // // // //           </h1>
+// // // // // // // // // //           <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: 0 }}>
+// // // // // // // // // //             Navigation fiche par fiche · {APP_NAME}
+// // // // // // // // // //           </p>
 // // // // // // // // // //         </div>
 
-// // // // // // // // // //         {/* ARROW UP */}
 // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
 // // // // // // // // // //           <button type="button" onClick={prev} disabled={!items.length} style={arrowBtn}>
 // // // // // // // // // //             <ChevronUp size={28} />
@@ -6296,19 +7771,12 @@
 // // // // // // // // // //             >
 // // // // // // // // // //               {index + 1} / {items.length}
 // // // // // // // // // //             </div>
-
 // // // // // // // // // //             {type === "categorie" && (
 // // // // // // // // // //               <CategorieSlide cat={current} navigate={navigate} onOpen={openFull} />
 // // // // // // // // // //             )}
-// // // // // // // // // //             {type === "article" && (
-// // // // // // // // // //               <ArticleSlide item={current} onOpen={openFull} />
-// // // // // // // // // //             )}
-// // // // // // // // // //             {type === "entrepot" && (
-// // // // // // // // // //               <EntrepotSlide ent={current} onOpen={openFull} />
-// // // // // // // // // //             )}
-// // // // // // // // // //             {type === "utilisateur" && (
-// // // // // // // // // //               <UserSlide user={current} onOpen={openFull} />
-// // // // // // // // // //             )}
+// // // // // // // // // //             {type === "article" && <ArticleSlide item={current} onOpen={openFull} />}
+// // // // // // // // // //             {type === "entrepot" && <EntrepotSlide ent={current} onOpen={openFull} />}
+// // // // // // // // // //             {type === "utilisateur" && <UserSlide user={current} onOpen={openFull} />}
 // // // // // // // // // //             {(type === "mouvement" || type === "archive") && (
 // // // // // // // // // //               <MouvementSlide m={current} onOpen={openFull} />
 // // // // // // // // // //             )}
@@ -6316,7 +7784,6 @@
 // // // // // // // // // //           </>
 // // // // // // // // // //         )}
 
-// // // // // // // // // //         {/* ARROW DOWN */}
 // // // // // // // // // //         <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
 // // // // // // // // // //           <button type="button" onClick={next} disabled={!items.length} style={arrowBtn}>
 // // // // // // // // // //             <ChevronDown size={28} />
@@ -6325,20 +7792,221 @@
 
 // // // // // // // // // //         <Footer />
 // // // // // // // // // //       </div>
+
+// // // // // // // // // //       {/* EXPORT MODAL — same flow as Details */}
+// // // // // // // // // //       {pdfOpen && (
+// // // // // // // // // //         <div
+// // // // // // // // // //           onClick={closeExport}
+// // // // // // // // // //           style={{
+// // // // // // // // // //             position: "fixed",
+// // // // // // // // // //             inset: 0,
+// // // // // // // // // //             zIndex: 3000,
+// // // // // // // // // //             background: "rgba(0,0,0,.6)",
+// // // // // // // // // //             backdropFilter: "blur(8px)",
+// // // // // // // // // //             display: "flex",
+// // // // // // // // // //             alignItems: "center",
+// // // // // // // // // //             justifyContent: "center",
+// // // // // // // // // //             padding: 16,
+// // // // // // // // // //           }}
+// // // // // // // // // //         >
+// // // // // // // // // //           <div
+// // // // // // // // // //             onClick={(e) => e.stopPropagation()}
+// // // // // // // // // //             style={{
+// // // // // // // // // //               width: "100%",
+// // // // // // // // // //               maxWidth: 440,
+// // // // // // // // // //               borderRadius: 24,
+// // // // // // // // // //               background: "var(--card-bg)",
+// // // // // // // // // //               border: "1px solid var(--glass-border)",
+// // // // // // // // // //               boxShadow: "0 30px 80px rgba(0,0,0,.4)",
+// // // // // // // // // //               padding: "1.5rem 1.4rem",
+// // // // // // // // // //               position: "relative",
+// // // // // // // // // //               overflow: "hidden",
+// // // // // // // // // //             }}
+// // // // // // // // // //           >
+// // // // // // // // // //             {pdfPhase === "preview" && (
+// // // // // // // // // //               <>
+// // // // // // // // // //                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+// // // // // // // // // //                   <div
+// // // // // // // // // //                     style={{
+// // // // // // // // // //                       width: 48,
+// // // // // // // // // //                       height: 48,
+// // // // // // // // // //                       borderRadius: 14,
+// // // // // // // // // //                       background:
+// // // // // // // // // //                         "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // //                       display: "grid",
+// // // // // // // // // //                       placeItems: "center",
+// // // // // // // // // //                       color: "#fff",
+// // // // // // // // // //                     }}
+// // // // // // // // // //                   >
+// // // // // // // // // //                     <FileText size={22} />
+// // // // // // // // // //                   </div>
+// // // // // // // // // //                   <div>
+// // // // // // // // // //                     <div
+// // // // // // // // // //                       style={{
+// // // // // // // // // //                         fontFamily: "Syne, sans-serif",
+// // // // // // // // // //                         fontWeight: 800,
+// // // // // // // // // //                         color: "var(--text)",
+// // // // // // // // // //                       }}
+// // // // // // // // // //                     >
+// // // // // // // // // //                       Exporter en PDF
+// // // // // // // // // //                     </div>
+// // // // // // // // // //                     <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+// // // // // // // // // //                       Collection complète
+// // // // // // // // // //                     </div>
+// // // // // // // // // //                   </div>
+// // // // // // // // // //                 </div>
+// // // // // // // // // //                 <div
+// // // // // // // // // //                   style={{
+// // // // // // // // // //                     maxHeight: 220,
+// // // // // // // // // //                     overflow: "auto",
+// // // // // // // // // //                     padding: "0.85rem 1rem",
+// // // // // // // // // //                     borderRadius: 14,
+// // // // // // // // // //                     background: "var(--glass-bg)",
+// // // // // // // // // //                     border: "1px solid var(--glass-border)",
+// // // // // // // // // //                     marginBottom: 16,
+// // // // // // // // // //                     fontSize: "0.85rem",
+// // // // // // // // // //                     color: "var(--text)",
+// // // // // // // // // //                     lineHeight: 1.55,
+// // // // // // // // // //                   }}
+// // // // // // // // // //                 >
+// // // // // // // // // //                   {previewLines().map((l, i) => (
+// // // // // // // // // //                     <div key={i}>{l}</div>
+// // // // // // // // // //                   ))}
+// // // // // // // // // //                 </div>
+// // // // // // // // // //                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+// // // // // // // // // //                   <button type="button" onClick={closeExport} style={topBtn}>
+// // // // // // // // // //                     Annuler
+// // // // // // // // // //                   </button>
+// // // // // // // // // //                   <button
+// // // // // // // // // //                     type="button"
+// // // // // // // // // //                     onClick={generatePdf}
+// // // // // // // // // //                     style={{
+// // // // // // // // // //                       ...topBtn,
+// // // // // // // // // //                       background:
+// // // // // // // // // //                         "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // //                       color: "#fff",
+// // // // // // // // // //                       border: "none",
+// // // // // // // // // //                       fontWeight: 800,
+// // // // // // // // // //                     }}
+// // // // // // // // // //                   >
+// // // // // // // // // //                     Générer
+// // // // // // // // // //                   </button>
+// // // // // // // // // //                 </div>
+// // // // // // // // // //               </>
+// // // // // // // // // //             )}
+// // // // // // // // // //             {pdfPhase === "loading" && (
+// // // // // // // // // //               <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
+// // // // // // // // // //                 <div
+// // // // // // // // // //                   style={{
+// // // // // // // // // //                     width: 64,
+// // // // // // // // // //                     height: 64,
+// // // // // // // // // //                     margin: "0 auto 1rem",
+// // // // // // // // // //                     borderRadius: "50%",
+// // // // // // // // // //                     border: "3px solid var(--glass-border)",
+// // // // // // // // // //                     borderTopColor: "var(--gradient-start)",
+// // // // // // // // // //                     animation: "spin 0.9s linear infinite",
+// // // // // // // // // //                   }}
+// // // // // // // // // //                 />
+// // // // // // // // // //                 <div
+// // // // // // // // // //                   style={{
+// // // // // // // // // //                     fontFamily: "Syne, sans-serif",
+// // // // // // // // // //                     fontWeight: 800,
+// // // // // // // // // //                     color: "var(--text)",
+// // // // // // // // // //                   }}
+// // // // // // // // // //                 >
+// // // // // // // // // //                   Génération en cours…
+// // // // // // // // // //                 </div>
+// // // // // // // // // //                 <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 6 }}>
+// // // // // // // // // //                   Préparation de votre document PDF
+// // // // // // // // // //                 </div>
+// // // // // // // // // //               </div>
+// // // // // // // // // //             )}
+// // // // // // // // // //             {pdfPhase === "success" && (
+// // // // // // // // // //               <div style={{ textAlign: "center" }}>
+// // // // // // // // // //                 <div
+// // // // // // // // // //                   style={{
+// // // // // // // // // //                     width: 64,
+// // // // // // // // // //                     height: 64,
+// // // // // // // // // //                     margin: "0 auto 1rem",
+// // // // // // // // // //                     borderRadius: "50%",
+// // // // // // // // // //                     background: "linear-gradient(135deg, #4ade80, #22c55e)",
+// // // // // // // // // //                     display: "grid",
+// // // // // // // // // //                     placeItems: "center",
+// // // // // // // // // //                     color: "#fff",
+// // // // // // // // // //                     boxShadow: "0 12px 28px rgba(74,222,128,.35)",
+// // // // // // // // // //                   }}
+// // // // // // // // // //                 >
+// // // // // // // // // //                   <CheckCircle size={32} />
+// // // // // // // // // //                 </div>
+// // // // // // // // // //                 <div
+// // // // // // // // // //                   style={{
+// // // // // // // // // //                     fontFamily: "Syne, sans-serif",
+// // // // // // // // // //                     fontWeight: 900,
+// // // // // // // // // //                     fontSize: "1.15rem",
+// // // // // // // // // //                     color: "var(--text)",
+// // // // // // // // // //                   }}
+// // // // // // // // // //                 >
+// // // // // // // // // //                   Génération réussie
+// // // // // // // // // //                 </div>
+// // // // // // // // // //                 <p
+// // // // // // // // // //                   style={{
+// // // // // // // // // //                     color: "var(--text-secondary)",
+// // // // // // // // // //                     fontSize: "0.88rem",
+// // // // // // // // // //                     margin: "0.5rem 0 1.25rem",
+// // // // // // // // // //                     lineHeight: 1.5,
+// // // // // // // // // //                   }}
+// // // // // // // // // //                 >
+// // // // // // // // // //                   Félicitations — votre PDF a bien été créé.
+// // // // // // // // // //                   <br />
+// // // // // // // // // //                   <span style={{ fontSize: "0.78rem" }}>{pdfFileName}</span>
+// // // // // // // // // //                 </p>
+// // // // // // // // // //                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+// // // // // // // // // //                   <button
+// // // // // // // // // //                     type="button"
+// // // // // // // // // //                     onClick={() => pdfBlobUrl && window.open(pdfBlobUrl, "_blank")}
+// // // // // // // // // //                     style={{
+// // // // // // // // // //                       ...topBtn,
+// // // // // // // // // //                       justifyContent: "center",
+// // // // // // // // // //                       background:
+// // // // // // // // // //                         "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+// // // // // // // // // //                       color: "#fff",
+// // // // // // // // // //                       border: "none",
+// // // // // // // // // //                       fontWeight: 800,
+// // // // // // // // // //                       padding: "0.75rem 1rem",
+// // // // // // // // // //                     }}
+// // // // // // // // // //                   >
+// // // // // // // // // //                     <ExternalLink size={16} /> Ouvrir le fichier
+// // // // // // // // // //                   </button>
+// // // // // // // // // //                   <button
+// // // // // // // // // //                     type="button"
+// // // // // // // // // //                     onClick={sharePdf}
+// // // // // // // // // //                     style={{ ...topBtn, justifyContent: "center", padding: "0.75rem 1rem" }}
+// // // // // // // // // //                   >
+// // // // // // // // // //                     <Share2 size={16} /> Partager
+// // // // // // // // // //                   </button>
+// // // // // // // // // //                   <button
+// // // // // // // // // //                     type="button"
+// // // // // // // // // //                     onClick={closeExport}
+// // // // // // // // // //                     style={{ ...topBtn, justifyContent: "center", padding: "0.75rem 1rem" }}
+// // // // // // // // // //                   >
+// // // // // // // // // //                     OK — Fermer
+// // // // // // // // // //                   </button>
+// // // // // // // // // //                 </div>
+// // // // // // // // // //               </div>
+// // // // // // // // // //             )}
+// // // // // // // // // //           </div>
+// // // // // // // // // //         </div>
+// // // // // // // // // //       )}
+
+// // // // // // // // // //       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 // // // // // // // // // //     </div>
 // // // // // // // // // //   );
 // // // // // // // // // // }
 
 // // // // // // // // // // /* ========== SLIDES ========== */
 // // // // // // // // // // function CategorieSlide({ cat, navigate, onOpen }) {
-// // // // // // // // // //   const { emoji, name } = parseCategoryName(cat);
 // // // // // // // // // //   const imgSrc = toIconSrc(cat.icon);
-// // // // // // // // // //   const short =
-// // // // // // // // // //     cat.icon && String(cat.icon).trim().length <= 8
-// // // // // // // // // //       ? String(cat.icon).trim()
-// // // // // // // // // //       : null;
 // // // // // // // // // //   const articles = cat._articles || [];
-
 // // // // // // // // // //   return (
 // // // // // // // // // //     <>
 // // // // // // // // // //       <GlassCard>
@@ -6364,34 +8032,12 @@
 // // // // // // // // // //               alignItems: "center",
 // // // // // // // // // //               justifyContent: "center",
 // // // // // // // // // //               boxShadow: "0 10px 28px var(--glow-color)",
-// // // // // // // // // //               position: "relative",
 // // // // // // // // // //             }}
 // // // // // // // // // //           >
-// // // // // // // // // //             <div
-// // // // // // // // // //               style={{
-// // // // // // // // // //                 position: "absolute",
-// // // // // // // // // //                 top: 8,
-// // // // // // // // // //                 left: 12,
-// // // // // // // // // //                 width: 22,
-// // // // // // // // // //                 height: 10,
-// // // // // // // // // //                 borderRadius: "50%",
-// // // // // // // // // //                 background: "rgba(255,255,255,0.4)",
-// // // // // // // // // //                 transform: "rotate(-20deg)",
-// // // // // // // // // //               }}
-// // // // // // // // // //             />
 // // // // // // // // // //             {imgSrc ? (
-// // // // // // // // // //               <img
-// // // // // // // // // //                 src={imgSrc}
-// // // // // // // // // //                 alt=""
-// // // // // // // // // //                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
-// // // // // // // // // //                 onError={(e) => {
-// // // // // // // // // //                   e.currentTarget.style.display = "none";
-// // // // // // // // // //                 }}
-// // // // // // // // // //               />
+// // // // // // // // // //               <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
 // // // // // // // // // //             ) : (
-// // // // // // // // // //               <span style={{ fontSize: "2.4rem", lineHeight: 1 }}>
-// // // // // // // // // //                 {short || emoji || "📂"}
-// // // // // // // // // //               </span>
+// // // // // // // // // //               <Tag size={36} color="#fff" />
 // // // // // // // // // //             )}
 // // // // // // // // // //           </div>
 // // // // // // // // // //           <div style={{ flex: 1, minWidth: 160 }}>
@@ -6403,7 +8049,7 @@
 // // // // // // // // // //                 color: "var(--text)",
 // // // // // // // // // //               }}
 // // // // // // // // // //             >
-// // // // // // // // // //               {name}
+// // // // // // // // // //               {cat.name}
 // // // // // // // // // //             </div>
 // // // // // // // // // //             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
 // // // // // // // // // //               <Badge color="#60a5fa">ID #{cat.id}</Badge>
@@ -6411,77 +8057,10 @@
 // // // // // // // // // //                 {articles.length} article{articles.length > 1 ? "s" : ""}
 // // // // // // // // // //               </Badge>
 // // // // // // // // // //             </div>
-// // // // // // // // // //             {cat.description && (
-// // // // // // // // // //               <p
-// // // // // // // // // //                 style={{
-// // // // // // // // // //                   marginTop: 12,
-// // // // // // // // // //                   color: "var(--text-secondary)",
-// // // // // // // // // //                   fontSize: "0.9rem",
-// // // // // // // // // //                   lineHeight: 1.45,
-// // // // // // // // // //                 }}
-// // // // // // // // // //               >
-// // // // // // // // // //                 {cat.description}
-// // // // // // // // // //               </p>
-// // // // // // // // // //             )}
 // // // // // // // // // //             <button type="button" onClick={onOpen} style={btnOpen}>
 // // // // // // // // // //               <ExternalLink size={14} /> Fiche complète
 // // // // // // // // // //             </button>
 // // // // // // // // // //           </div>
-// // // // // // // // // //         </div>
-// // // // // // // // // //       </GlassCard>
-
-// // // // // // // // // //       <SectionTitle icon={<Package size={16} />} title="Articles de cette catégorie" />
-// // // // // // // // // //       <GlassCard>
-// // // // // // // // // //         <div style={{ padding: "1rem 1.25rem", overflowX: "auto" }}>
-// // // // // // // // // //           {articles.length === 0 ? (
-// // // // // // // // // //             <EmptyLine text="Aucun article dans cette catégorie." />
-// // // // // // // // // //           ) : (
-// // // // // // // // // //             <table style={tableStyle}>
-// // // // // // // // // //               <thead>
-// // // // // // // // // //                 <tr>
-// // // // // // // // // //                   <th style={thStyle}></th>
-// // // // // // // // // //                   <th style={thStyle}>Article</th>
-// // // // // // // // // //                   <th style={thStyle}>Marque / modèle</th>
-// // // // // // // // // //                 </tr>
-// // // // // // // // // //               </thead>
-// // // // // // // // // //               <tbody>
-// // // // // // // // // //                 {articles.slice(0, 12).map((it) => {
-// // // // // // // // // //                   const im = getArticleImageSrc(it);
-// // // // // // // // // //                   return (
-// // // // // // // // // //                     <tr
-// // // // // // // // // //                       key={it.id}
-// // // // // // // // // //                       style={{ cursor: "pointer" }}
-// // // // // // // // // //                       onClick={() => navigate(`/details/article/${it.id}`)}
-// // // // // // // // // //                     >
-// // // // // // // // // //                       <td style={tdStyle}>
-// // // // // // // // // //                         {im ? (
-// // // // // // // // // //                           <img
-// // // // // // // // // //                             src={im}
-// // // // // // // // // //                             alt=""
-// // // // // // // // // //                             style={{
-// // // // // // // // // //                               width: 40,
-// // // // // // // // // //                               height: 40,
-// // // // // // // // // //                               objectFit: "cover",
-// // // // // // // // // //                               borderRadius: 8,
-// // // // // // // // // //                             }}
-// // // // // // // // // //                             onError={(e) => {
-// // // // // // // // // //                               e.currentTarget.style.display = "none";
-// // // // // // // // // //                             }}
-// // // // // // // // // //                           />
-// // // // // // // // // //                         ) : (
-// // // // // // // // // //                           <Package size={18} color="var(--gradient-start)" />
-// // // // // // // // // //                         )}
-// // // // // // // // // //                       </td>
-// // // // // // // // // //                       <td style={{ ...tdStyle, fontWeight: 700 }}>{it.name}</td>
-// // // // // // // // // //                       <td style={tdStyle}>
-// // // // // // // // // //                         {[it.mark, it.modele].filter(Boolean).join(" · ") || "—"}
-// // // // // // // // // //                       </td>
-// // // // // // // // // //                     </tr>
-// // // // // // // // // //                   );
-// // // // // // // // // //                 })}
-// // // // // // // // // //               </tbody>
-// // // // // // // // // //             </table>
-// // // // // // // // // //           )}
 // // // // // // // // // //         </div>
 // // // // // // // // // //       </GlassCard>
 // // // // // // // // // //     </>
@@ -6516,14 +8095,7 @@
 // // // // // // // // // //           }}
 // // // // // // // // // //         >
 // // // // // // // // // //           {im ? (
-// // // // // // // // // //             <img
-// // // // // // // // // //               src={im}
-// // // // // // // // // //               alt=""
-// // // // // // // // // //               style={{ width: "100%", height: "100%", objectFit: "cover" }}
-// // // // // // // // // //               onError={(e) => {
-// // // // // // // // // //                 e.currentTarget.style.display = "none";
-// // // // // // // // // //               }}
-// // // // // // // // // //             />
+// // // // // // // // // //             <img src={im} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
 // // // // // // // // // //           ) : (
 // // // // // // // // // //             <ImageIcon size={36} color="var(--gradient-start)" />
 // // // // // // // // // //           )}
@@ -6542,22 +8114,8 @@
 // // // // // // // // // //           <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
 // // // // // // // // // //             <Badge color="var(--gradient-start)">ID #{item.id}</Badge>
 // // // // // // // // // //             <Badge color="#60a5fa">{item._catName || "—"}</Badge>
-// // // // // // // // // //             <Badge color="#4ade80">
-// // // // // // // // // //               <Boxes size={12} style={{ marginRight: 4 }} />
-// // // // // // // // // //               {convertirQuantite(item.stockReel, item)}
-// // // // // // // // // //             </Badge>
+// // // // // // // // // //             <Badge color="#4ade80">{convertirQuantite(item.stockReel, item)}</Badge>
 // // // // // // // // // //           </div>
-// // // // // // // // // //           <InfoGrid
-// // // // // // // // // //             rows={[
-// // // // // // // // // //               {
-// // // // // // // // // //                 icon: Hash,
-// // // // // // // // // //                 label: "Prix vente",
-// // // // // // // // // //                 value: `${item.sale_price_fc ?? "—"} FC`,
-// // // // // // // // // //               },
-// // // // // // // // // //               { icon: Tag, label: "Catégorie", value: item._catName || "—" },
-// // // // // // // // // //               { icon: Info, label: "Niveau", value: item.level ?? "—" },
-// // // // // // // // // //             ]}
-// // // // // // // // // //           />
 // // // // // // // // // //           <button type="button" onClick={onOpen} style={btnOpen}>
 // // // // // // // // // //             <ExternalLink size={14} /> Fiche complète
 // // // // // // // // // //           </button>
@@ -6606,11 +8164,10 @@
 // // // // // // // // // //             {
 // // // // // // // // // //               icon: Warehouse,
 // // // // // // // // // //               label: "Localisation",
-// // // // // // // // // //               value: ent.location || ent.localisation || ent.adresse || "—",
+// // // // // // // // // //               value: ent.location || ent.localisation || "—",
 // // // // // // // // // //             },
 // // // // // // // // // //             { icon: Hash, label: "Référence", value: ent.reference || "—" },
 // // // // // // // // // //             { icon: Boxes, label: "Capacité", value: ent.capacity ?? "—" },
-// // // // // // // // // //             { icon: Info, label: "Description", value: ent.description || "—" },
 // // // // // // // // // //           ]}
 // // // // // // // // // //         />
 // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
@@ -6665,9 +8222,7 @@
 // // // // // // // // // //           >
 // // // // // // // // // //             {user.first_name} {user.name}
 // // // // // // // // // //           </div>
-// // // // // // // // // //           <div
-// // // // // // // // // //             style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 4 }}
-// // // // // // // // // //           >
+// // // // // // // // // //           <div style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
 // // // // // // // // // //             {user.role || "Utilisateur"} · {user.email || "—"}
 // // // // // // // // // //           </div>
 // // // // // // // // // //           <div style={{ marginTop: 10 }}>
@@ -6682,7 +8237,6 @@
 // // // // // // // // // //   );
 // // // // // // // // // // }
 
-// // // // // // // // // // /** Mouvement OU Archive — affiche article + entrepôt + qty */
 // // // // // // // // // // function MouvementSlide({ m, onOpen }) {
 // // // // // // // // // //   const it = m._item;
 // // // // // // // // // //   const en = m._entrepot;
@@ -6691,7 +8245,6 @@
 // // // // // // // // // //   const entLabel =
 // // // // // // // // // //     en?.name || en?.reference || (m.entrepot_id != null ? `Entrepôt #${m.entrepot_id}` : "—");
 // // // // // // // // // //   const isIn = String(m.type || "").toLowerCase().includes("entr");
-
 // // // // // // // // // //   return (
 // // // // // // // // // //     <GlassCard>
 // // // // // // // // // //       <div style={{ padding: "1.5rem" }}>
@@ -6711,14 +8264,7 @@
 // // // // // // // // // //             }}
 // // // // // // // // // //           >
 // // // // // // // // // //             {im ? (
-// // // // // // // // // //               <img
-// // // // // // // // // //                 src={im}
-// // // // // // // // // //                 alt=""
-// // // // // // // // // //                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
-// // // // // // // // // //                 onError={(e) => {
-// // // // // // // // // //                   e.currentTarget.style.display = "none";
-// // // // // // // // // //                 }}
-// // // // // // // // // //               />
+// // // // // // // // // //               <img src={im} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
 // // // // // // // // // //             ) : (
 // // // // // // // // // //               <Package size={28} color="var(--gradient-start)" />
 // // // // // // // // // //             )}
@@ -6734,35 +8280,22 @@
 // // // // // // // // // //             >
 // // // // // // // // // //               {it ? designation(it) : `Article #${m.item_id}`}
 // // // // // // // // // //             </div>
-// // // // // // // // // //             <div
-// // // // // // // // // //               style={{
-// // // // // // // // // //                 marginTop: 8,
-// // // // // // // // // //                 display: "flex",
-// // // // // // // // // //                 gap: 8,
-// // // // // // // // // //                 flexWrap: "wrap",
-// // // // // // // // // //               }}
-// // // // // // // // // //             >
+// // // // // // // // // //             <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
 // // // // // // // // // //               <Badge color={isIn ? "#4ade80" : "#f87171"}>{m.type || "—"}</Badge>
 // // // // // // // // // //               <Badge color="#60a5fa">{qty}</Badge>
 // // // // // // // // // //               {m._src === "archive" && <Badge color="#c084fc">Archive</Badge>}
 // // // // // // // // // //             </div>
 // // // // // // // // // //           </div>
 // // // // // // // // // //         </div>
-
 // // // // // // // // // //         <InfoGrid
 // // // // // // // // // //           rows={[
-// // // // // // // // // //             {
-// // // // // // // // // //               icon: Warehouse,
-// // // // // // // // // //               label: "Entrepôt",
-// // // // // // // // // //               value: entLabel,
-// // // // // // // // // //             },
+// // // // // // // // // //             { icon: Warehouse, label: "Entrepôt", value: entLabel },
 // // // // // // // // // //             {
 // // // // // // // // // //               icon: Calendar,
 // // // // // // // // // //               label: "Date",
 // // // // // // // // // //               value: formatDateFr(m.date || m.created_at),
 // // // // // // // // // //             },
 // // // // // // // // // //             { icon: Info, label: "Nature", value: m.nature || m._src || "—" },
-// // // // // // // // // //             { icon: Hash, label: "Raison", value: m.raison || "—" },
 // // // // // // // // // //           ]}
 // // // // // // // // // //         />
 // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
@@ -6825,18 +8358,6 @@
 // // // // // // // // // //             { icon: Shield, label: "ID log", value: log.id ?? "—" },
 // // // // // // // // // //           ]}
 // // // // // // // // // //         />
-// // // // // // // // // //         {(log.details || log.message) && (
-// // // // // // // // // //           <p
-// // // // // // // // // //             style={{
-// // // // // // // // // //               marginTop: 12,
-// // // // // // // // // //               color: "var(--text-secondary)",
-// // // // // // // // // //               fontSize: "0.9rem",
-// // // // // // // // // //               lineHeight: 1.5,
-// // // // // // // // // //             }}
-// // // // // // // // // //           >
-// // // // // // // // // //             {log.details || log.message}
-// // // // // // // // // //           </p>
-// // // // // // // // // //         )}
 // // // // // // // // // //         <button type="button" onClick={onOpen} style={btnOpen}>
 // // // // // // // // // //           <ExternalLink size={14} /> Fiche complète
 // // // // // // // // // //         </button>
@@ -6845,7 +8366,6 @@
 // // // // // // // // // //   );
 // // // // // // // // // // }
 
-// // // // // // // // // // /* ========== UI ATOMS ========== */
 // // // // // // // // // // function GlassCard({ children }) {
 // // // // // // // // // //   return (
 // // // // // // // // // //     <div
@@ -6861,26 +8381,6 @@
 // // // // // // // // // //       }}
 // // // // // // // // // //     >
 // // // // // // // // // //       {children}
-// // // // // // // // // //     </div>
-// // // // // // // // // //   );
-// // // // // // // // // // }
-
-// // // // // // // // // // function SectionTitle({ icon, title }) {
-// // // // // // // // // //   return (
-// // // // // // // // // //     <div
-// // // // // // // // // //       style={{
-// // // // // // // // // //         display: "flex",
-// // // // // // // // // //         alignItems: "center",
-// // // // // // // // // //         gap: 8,
-// // // // // // // // // //         margin: "1.1rem 0 0.65rem",
-// // // // // // // // // //         color: "var(--gradient-start)",
-// // // // // // // // // //         fontFamily: "Syne, sans-serif",
-// // // // // // // // // //         fontWeight: 800,
-// // // // // // // // // //         fontSize: "0.95rem",
-// // // // // // // // // //       }}
-// // // // // // // // // //     >
-// // // // // // // // // //       {icon}
-// // // // // // // // // //       {title}
 // // // // // // // // // //     </div>
 // // // // // // // // // //   );
 // // // // // // // // // // }
@@ -6976,21 +8476,6 @@
 // // // // // // // // // //   );
 // // // // // // // // // // }
 
-// // // // // // // // // // function EmptyLine({ text }) {
-// // // // // // // // // //   return (
-// // // // // // // // // //     <div
-// // // // // // // // // //       style={{
-// // // // // // // // // //         padding: "1.2rem",
-// // // // // // // // // //         textAlign: "center",
-// // // // // // // // // //         color: "var(--text-secondary)",
-// // // // // // // // // //         fontSize: "0.88rem",
-// // // // // // // // // //       }}
-// // // // // // // // // //     >
-// // // // // // // // // //       {text}
-// // // // // // // // // //     </div>
-// // // // // // // // // //   );
-// // // // // // // // // // }
-
 // // // // // // // // // // const topBtn = {
 // // // // // // // // // //   display: "inline-flex",
 // // // // // // // // // //   alignItems: "center",
@@ -7034,31 +8519,6 @@
 // // // // // // // // // //   cursor: "pointer",
 // // // // // // // // // //   boxShadow: "0 8px 22px var(--glow-color)",
 // // // // // // // // // // };
-
-// // // // // // // // // // const tableStyle = {
-// // // // // // // // // //   width: "100%",
-// // // // // // // // // //   borderCollapse: "collapse",
-// // // // // // // // // //   fontSize: "0.88rem",
-// // // // // // // // // // };
-
-// // // // // // // // // // const thStyle = {
-// // // // // // // // // //   textAlign: "left",
-// // // // // // // // // //   padding: "0.55rem 0.6rem",
-// // // // // // // // // //   borderBottom: "1px solid var(--glass-border)",
-// // // // // // // // // //   color: "var(--text-secondary)",
-// // // // // // // // // //   fontSize: "0.72rem",
-// // // // // // // // // //   fontWeight: 700,
-// // // // // // // // // //   textTransform: "uppercase",
-// // // // // // // // // //   letterSpacing: "0.04em",
-// // // // // // // // // // };
-
-// // // // // // // // // // const tdStyle = {
-// // // // // // // // // //   padding: "0.65rem 0.6rem",
-// // // // // // // // // //   borderBottom: "1px solid var(--glass-border)",
-// // // // // // // // // //   color: "var(--text)",
-// // // // // // // // // //   verticalAlign: "middle",
-// // // // // // // // // // };
-
 
 
 
@@ -7300,6 +8760,201 @@
 // // // // // // // // //   return window.jspdf.jsPDF;
 // // // // // // // // // }
 
+
+// // // // // // // // // /* ========== PDF PREMIUM (thème + noms lisibles) ========== */
+// // // // // // // // // function getPdfThemeColors(themeName) {
+// // // // // // // // //   const map = {
+// // // // // // // // //     "dark-galaxy": { primary: [139, 92, 246], secondary: [99, 102, 241], accent: [167, 139, 250] },
+// // // // // // // // //     "light-galaxy": { primary: [109, 92, 231], secondary: [79, 70, 229], accent: [124, 58, 237] },
+// // // // // // // // //     "dark-simple": { primary: [59, 130, 246], secondary: [96, 165, 250], accent: [147, 197, 253] },
+// // // // // // // // //     "light-simple": { primary: [37, 99, 235], secondary: [59, 130, 246], accent: [96, 165, 250] },
+// // // // // // // // //     "dark-luxury": { primary: [212, 175, 55], secondary: [245, 215, 110], accent: [180, 140, 45] },
+// // // // // // // // //     "light-luxury": { primary: [154, 114, 21], secondary: [212, 175, 55], accent: [180, 140, 45] },
+// // // // // // // // //     "dark-exotic": { primary: [249, 115, 22], secondary: [251, 146, 60], accent: [234, 88, 12] },
+// // // // // // // // //     "light-exotic": { primary: [194, 65, 12], secondary: [249, 115, 22], accent: [234, 88, 12] },
+// // // // // // // // //     "dark-verdatre": { primary: [16, 185, 129], secondary: [52, 211, 153], accent: [5, 150, 105] },
+// // // // // // // // //     "light-verdatre": { primary: [4, 120, 87], secondary: [16, 185, 129], accent: [5, 150, 105] },
+// // // // // // // // //     "dark-glamour": { primary: [219, 39, 119], secondary: [244, 114, 182], accent: [190, 24, 93] },
+// // // // // // // // //     "light-glamour": { primary: [190, 24, 93], secondary: [219, 39, 119], accent: [157, 23, 77] },
+// // // // // // // // //     "dark-graphite": { primary: [161, 161, 170], secondary: [212, 212, 216], accent: [113, 113, 122] },
+// // // // // // // // //     "light-graphite": { primary: [63, 63, 70], secondary: [113, 113, 122], accent: [82, 82, 91] },
+// // // // // // // // //     "dark-volcanic": { primary: [239, 68, 68], secondary: [249, 115, 22], accent: [220, 38, 38] },
+// // // // // // // // //     "light-volcanic": { primary: [185, 28, 28], secondary: [220, 38, 38], accent: [239, 68, 68] },
+// // // // // // // // //     "dark-oceanic": { primary: [8, 145, 178], secondary: [34, 211, 238], accent: [6, 182, 212] },
+// // // // // // // // //     "light-oceanic": { primary: [8, 145, 178], secondary: [6, 182, 212], accent: [14, 116, 144] },
+// // // // // // // // //     "dark-modern": { primary: [34, 211, 238], secondary: [59, 130, 246], accent: [34, 211, 238] },
+// // // // // // // // //     "light-modern": { primary: [3, 105, 161], secondary: [37, 99, 235], accent: [8, 145, 178] },
+// // // // // // // // //   };
+// // // // // // // // //   return map[themeName] || map["dark-galaxy"];
+// // // // // // // // // }
+
+// // // // // // // // // function userDisplayName(u) {
+// // // // // // // // //   if (!u) return null;
+// // // // // // // // //   const n = [u.first_name, u.name, u.middle_name].filter(Boolean).join(" ").trim();
+// // // // // // // // //   return n || u.email || null;
+// // // // // // // // // }
+
+// // // // // // // // // /**
+// // // // // // // // //  * Construit un PDF A4 premium avec couleurs du thème.
+// // // // // // // // //  * sections: [{ title, color?, rows: [{label, value, color?}], imageSrc?, imageCaption? }]
+// // // // // // // // //  */
+// // // // // // // // // async function buildPremiumPdf({ themeName, docTitle, subtitle, sections }) {
+// // // // // // // // //   const JsPDF = await loadJsPDF();
+// // // // // // // // //   const doc = new JsPDF({ unit: "mm", format: "a4" });
+// // // // // // // // //   const pageW = doc.internal.pageSize.getWidth();
+// // // // // // // // //   const pageH = doc.internal.pageSize.getHeight();
+// // // // // // // // //   const margin = 14;
+// // // // // // // // //   let y = margin;
+// // // // // // // // //   const colors = getPdfThemeColors(themeName);
+// // // // // // // // //   const primary = colors.primary;
+// // // // // // // // //   const secondary = colors.secondary;
+// // // // // // // // //   const accent = colors.accent;
+// // // // // // // // //   const slate = [51, 65, 85];
+// // // // // // // // //   const muted = [100, 116, 139];
+// // // // // // // // //   const green = [22, 163, 74];
+// // // // // // // // //   const red = [220, 38, 38];
+// // // // // // // // //   const amber = [217, 119, 6];
+
+// // // // // // // // //   const ensure = (need = 12) => {
+// // // // // // // // //     if (y + need > pageH - 16) {
+// // // // // // // // //       doc.addPage();
+// // // // // // // // //       // thin top bar on continuation pages
+// // // // // // // // //       doc.setFillColor(...primary);
+// // // // // // // // //       doc.rect(0, 0, pageW, 4, "F");
+// // // // // // // // //       y = margin + 2;
+// // // // // // // // //     }
+// // // // // // // // //   };
+
+// // // // // // // // //   // ===== Header bandeau =====
+// // // // // // // // //   doc.setFillColor(...primary);
+// // // // // // // // //   doc.rect(0, 0, pageW, 26, "F");
+// // // // // // // // //   // accent line
+// // // // // // // // //   doc.setFillColor(...accent);
+// // // // // // // // //   doc.rect(0, 26, pageW, 1.4, "F");
+// // // // // // // // //   doc.setTextColor(255, 255, 255);
+// // // // // // // // //   doc.setFont("helvetica", "bold");
+// // // // // // // // //   doc.setFontSize(16);
+// // // // // // // // //   doc.text(APP_NAME, margin, 11);
+// // // // // // // // //   doc.setFont("helvetica", "normal");
+// // // // // // // // //   doc.setFontSize(9);
+// // // // // // // // //   doc.text(COMPANY_NAME, margin, 18);
+// // // // // // // // //   doc.text(new Date().toLocaleString("fr-FR"), pageW - margin, 14, { align: "right" });
+// // // // // // // // //   y = 34;
+
+// // // // // // // // //   // Document title
+// // // // // // // // //   doc.setFont("helvetica", "bold");
+// // // // // // // // //   doc.setFontSize(13);
+// // // // // // // // //   doc.setTextColor(...slate);
+// // // // // // // // //   doc.text(String(docTitle || "Export"), margin, y);
+// // // // // // // // //   y += 6;
+// // // // // // // // //   if (subtitle) {
+// // // // // // // // //     doc.setFont("helvetica", "normal");
+// // // // // // // // //     doc.setFontSize(9);
+// // // // // // // // //     doc.setTextColor(...muted);
+// // // // // // // // //     doc.text(String(subtitle), margin, y);
+// // // // // // // // //     y += 7;
+// // // // // // // // //   }
+// // // // // // // // //   y += 2;
+
+// // // // // // // // //   const title = (t, color = primary) => {
+// // // // // // // // //     ensure(12);
+// // // // // // // // //     doc.setFillColor(...color);
+// // // // // // // // //     doc.roundedRect(margin, y, pageW - margin * 2, 8, 1.5, 1.5, "F");
+// // // // // // // // //     doc.setTextColor(255, 255, 255);
+// // // // // // // // //     doc.setFont("helvetica", "bold");
+// // // // // // // // //     doc.setFontSize(10.5);
+// // // // // // // // //     doc.text(String(t), margin + 3, y + 5.4);
+// // // // // // // // //     y += 12;
+// // // // // // // // //     doc.setTextColor(...slate);
+// // // // // // // // //   };
+
+// // // // // // // // //   const kv = (label, value, c = slate) => {
+// // // // // // // // //     ensure(7);
+// // // // // // // // //     doc.setFont("helvetica", "normal");
+// // // // // // // // //     doc.setFontSize(9.5);
+// // // // // // // // //     doc.setTextColor(...muted);
+// // // // // // // // //     doc.text(String(label), margin, y);
+// // // // // // // // //     doc.setFont("helvetica", "bold");
+// // // // // // // // //     doc.setTextColor(...c);
+// // // // // // // // //     const val = String(value ?? "—");
+// // // // // // // // //     const maxW = pageW - margin * 2 - 55;
+// // // // // // // // //     const lines = doc.splitTextToSize(val.length > 120 ? val.slice(0, 117) + "…" : val, maxW);
+// // // // // // // // //     doc.text(lines[0], pageW - margin, y, { align: "right" });
+// // // // // // // // //     y += 6.2;
+// // // // // // // // //     for (let i = 1; i < lines.length; i++) {
+// // // // // // // // //       ensure(6);
+// // // // // // // // //       doc.text(lines[i], pageW - margin, y, { align: "right" });
+// // // // // // // // //       y += 5.5;
+// // // // // // // // //     }
+// // // // // // // // //   };
+
+// // // // // // // // //   const bodyLine = (text, size = 9, c = slate) => {
+// // // // // // // // //     ensure(6);
+// // // // // // // // //     doc.setFont("helvetica", "normal");
+// // // // // // // // //     doc.setFontSize(size);
+// // // // // // // // //     doc.setTextColor(...c);
+// // // // // // // // //     const wrapped = doc.splitTextToSize(String(text), pageW - margin * 2);
+// // // // // // // // //     for (const line of wrapped) {
+// // // // // // // // //       ensure(5.5);
+// // // // // // // // //       doc.text(line, margin, y);
+// // // // // // // // //       y += 5.2;
+// // // // // // // // //     }
+// // // // // // // // //   };
+
+// // // // // // // // //   for (const sec of sections || []) {
+// // // // // // // // //     if (sec.title) title(sec.title, sec.color || primary);
+// // // // // // // // //     if (sec.imageSrc) {
+// // // // // // // // //       const dataUrl = await loadImageAsDataUrl(sec.imageSrc);
+// // // // // // // // //       if (dataUrl) {
+// // // // // // // // //         const size = sec.imageSize || 28;
+// // // // // // // // //         ensure(size + 6);
+// // // // // // // // //         try {
+// // // // // // // // //           doc.addImage(dataUrl, "JPEG", margin, y, size, size);
+// // // // // // // // //           if (sec.imageCaption) {
+// // // // // // // // //             doc.setFont("helvetica", "bold");
+// // // // // // // // //             doc.setFontSize(12);
+// // // // // // // // //             doc.setTextColor(...slate);
+// // // // // // // // //             doc.text(String(sec.imageCaption), margin + size + 4, y + 10);
+// // // // // // // // //             if (sec.imageSub) {
+// // // // // // // // //               doc.setFont("helvetica", "normal");
+// // // // // // // // //               doc.setFontSize(9);
+// // // // // // // // //               doc.setTextColor(...muted);
+// // // // // // // // //               doc.text(String(sec.imageSub), margin + size + 4, y + 16);
+// // // // // // // // //             }
+// // // // // // // // //           }
+// // // // // // // // //           y += size + 6;
+// // // // // // // // //         } catch {
+// // // // // // // // //           /* skip image */
+// // // // // // // // //         }
+// // // // // // // // //       }
+// // // // // // // // //     }
+// // // // // // // // //     for (const row of sec.rows || []) {
+// // // // // // // // //       kv(row.label, row.value, row.color || slate);
+// // // // // // // // //     }
+// // // // // // // // //     if (sec.lines) {
+// // // // // // // // //       for (const ln of sec.lines) bodyLine(ln.text, ln.size || 8.5, ln.color || muted);
+// // // // // // // // //     }
+// // // // // // // // //     y += 2;
+// // // // // // // // //   }
+
+// // // // // // // // //   // Footer on last page
+// // // // // // // // //   const pageCount = doc.internal.getNumberOfPages();
+// // // // // // // // //   for (let p = 1; p <= pageCount; p++) {
+// // // // // // // // //     doc.setPage(p);
+// // // // // // // // //     doc.setDrawColor(...primary);
+// // // // // // // // //     doc.setLineWidth(0.3);
+// // // // // // // // //     doc.line(margin, pageH - 10, pageW - margin, pageH - 10);
+// // // // // // // // //     doc.setFont("helvetica", "normal");
+// // // // // // // // //     doc.setFontSize(8);
+// // // // // // // // //     doc.setTextColor(...muted);
+// // // // // // // // //     doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, pageH - 5);
+// // // // // // // // //     doc.text(`Page ${p} / ${pageCount}`, pageW - margin, pageH - 5, { align: "right" });
+// // // // // // // // //   }
+
+// // // // // // // // //   return doc;
+// // // // // // // // // }
+
+
 // // // // // // // // // const TYPE_LABEL = {
 // // // // // // // // //   categorie: "Catégories",
 // // // // // // // // //   article: "Articles",
@@ -7516,65 +9171,90 @@
 // // // // // // // // //     setPdfBusy(true);
 // // // // // // // // //     setPdfPhase("loading");
 // // // // // // // // //     try {
-// // // // // // // // //       const jsPDF = await loadJsPDF();
-// // // // // // // // //       const doc = new jsPDF({ unit: "mm", format: "a4" });
-// // // // // // // // //       doc.setFillColor(30, 41, 59);
-// // // // // // // // //       doc.rect(0, 0, 210, 28, "F");
-// // // // // // // // //       doc.setTextColor(255, 255, 255);
-// // // // // // // // //       doc.setFontSize(16);
-// // // // // // // // //       doc.text(APP_NAME, 14, 12);
-// // // // // // // // //       doc.setFontSize(10);
-// // // // // // // // //       doc.text(COMPANY_NAME, 14, 20);
-// // // // // // // // //       doc.setTextColor(40);
-// // // // // // // // //       doc.setFontSize(13);
-// // // // // // // // //       doc.text(TYPE_LABEL[type] || type, 14, 40);
-// // // // // // // // //       doc.setFontSize(10);
-// // // // // // // // //       doc.setTextColor(100);
-// // // // // // // // //       doc.text(
-// // // // // // // // //         `Export complet · ${filterKey === "all" ? "Tous" : filterKey} · ${new Date().toLocaleString("fr-FR")}`,
-// // // // // // // // //         14,
-// // // // // // // // //         47
-// // // // // // // // //       );
-// // // // // // // // //       doc.setTextColor(30);
-// // // // // // // // //       let y = 56;
-// // // // // // // // //       items.forEach((row, i) => {
-// // // // // // // // //         if (y > 270) {
-// // // // // // // // //           doc.addPage();
-// // // // // // // // //           y = 18;
+// // // // // // // // //       let userMap = {};
+// // // // // // // // //       try {
+// // // // // // // // //         const uRes = await getUsers().catch(() => ({ data: [] }));
+// // // // // // // // //         for (const u of uRes.data || []) {
+// // // // // // // // //           userMap[Number(u.id)] = userDisplayName(u) || `Utilisateur #${u.id}`;
 // // // // // // // // //         }
-// // // // // // // // //         let line = "";
-// // // // // // // // //         if (type === "audit") {
-// // // // // // // // //           line = `${i + 1}. ${String(row.created_at || "").slice(0, 19)} · ${row.action || "—"} · ${row.entity || ""} · user #${row.user_id ?? "—"}`;
-// // // // // // // // //         } else if (type === "mouvement" || type === "archive") {
-// // // // // // // // //           const it = row._item;
-// // // // // // // // //           const name = it ? designation(it) : `#${row.item_id}`;
-// // // // // // // // //           const ent =
-// // // // // // // // //             row._entrepot?.name ||
-// // // // // // // // //             row._entrepot?.reference ||
-// // // // // // // // //             (row.entrepot_id != null ? `#${row.entrepot_id}` : "—");
-// // // // // // // // //           line = `${i + 1}. ${dateKeyOf(row)} · ${row.type || "—"} · ${name} · ${ent} · qty ${row.qty ?? "—"}`;
-// // // // // // // // //         } else if (type === "article") {
-// // // // // // // // //           line = `${i + 1}. ${designation(row)} · stock ${convertirQuantite(row.stockReel, row)}`;
-// // // // // // // // //         } else if (type === "categorie") {
-// // // // // // // // //           line = `${i + 1}. ${row.name} · ${(row._articles || []).length} articles`;
-// // // // // // // // //         } else if (type === "entrepot") {
-// // // // // // // // //           line = `${i + 1}. ${row.name || row.reference} · ${row.location || ""}`;
-// // // // // // // // //         } else if (type === "utilisateur") {
-// // // // // // // // //           line = `${i + 1}. ${row.first_name || ""} ${row.name || ""} · ${row.email || ""} · ${row.role || ""}`;
-// // // // // // // // //         } else {
-// // // // // // // // //           line = `${i + 1}. #${row.id}`;
-// // // // // // // // //         }
-// // // // // // // // //         const wrapped = doc.splitTextToSize(line, 180);
-// // // // // // // // //         doc.text(wrapped, 14, y);
-// // // // // // // // //         y += wrapped.length * 5 + 2;
+// // // // // // // // //       } catch {}
+
+// // // // // // // // //       const sections = [
+// // // // // // // // //         {
+// // // // // // // // //           title: TYPE_LABEL[type] || type,
+// // // // // // // // //           rows: [
+// // // // // // // // //             { label: "Filtre", value: filterKey === "all" ? "Tous les éléments" : formatDateFr(filterKey) },
+// // // // // // // // //             { label: "Nombre d'éléments", value: items.length },
+// // // // // // // // //           ],
+// // // // // // // // //         },
+// // // // // // // // //       ];
+
+// // // // // // // // //       if (type === "categorie") {
+// // // // // // // // //         sections.push({
+// // // // // // // // //           title: "Liste des catégories",
+// // // // // // // // //           lines: items.map((cat, i) => ({
+// // // // // // // // //             text: `${i + 1}. ${cat.name} · ${(cat._articles || []).length} article(s)`,
+// // // // // // // // //           })),
+// // // // // // // // //         });
+// // // // // // // // //       } else if (type === "article") {
+// // // // // // // // //         sections.push({
+// // // // // // // // //           title: "Liste des articles",
+// // // // // // // // //           lines: items.map((it, i) => ({
+// // // // // // // // //             text: `${i + 1}. ${designation(it)} · ${it._catName || "—"} · stock ${convertirQuantite(it.stockReel, it)}`,
+// // // // // // // // //           })),
+// // // // // // // // //         });
+// // // // // // // // //       } else if (type === "entrepot") {
+// // // // // // // // //         sections.push({
+// // // // // // // // //           title: "Liste des entrepôts",
+// // // // // // // // //           lines: items.map((e, i) => ({
+// // // // // // // // //             text: `${i + 1}. ${e.name || e.reference || "—"} · ${e.location || e.localisation || ""}`,
+// // // // // // // // //           })),
+// // // // // // // // //         });
+// // // // // // // // //       } else if (type === "utilisateur") {
+// // // // // // // // //         sections.push({
+// // // // // // // // //           title: "Liste des utilisateurs",
+// // // // // // // // //           lines: items.map((u, i) => {
+// // // // // // // // //             const n = userDisplayName(u) || `${u.first_name || ""} ${u.name || ""}`.trim();
+// // // // // // // // //             return { text: `${i + 1}. ${n} · ${u.email || "—"} · ${u.role || "—"}` };
+// // // // // // // // //           }),
+// // // // // // // // //         });
+// // // // // // // // //       } else if (type === "mouvement" || type === "archive") {
+// // // // // // // // //         sections.push({
+// // // // // // // // //           title: type === "archive" ? "Mouvements archivés" : "Mouvements",
+// // // // // // // // //           lines: items.map((m, i) => {
+// // // // // // // // //             const name = m._item ? designation(m._item) : "Article";
+// // // // // // // // //             const ent = m._entrepot?.name || m._entrepot?.reference || "—";
+// // // // // // // // //             return {
+// // // // // // // // //               text: `${i + 1}. ${formatDateFr(m.date || m.created_at)} · ${m.type || "—"} · ${name} · ${ent} · qté ${m.qty ?? "—"}`,
+// // // // // // // // //             };
+// // // // // // // // //           }),
+// // // // // // // // //         });
+// // // // // // // // //       } else if (type === "audit") {
+// // // // // // // // //         sections.push({
+// // // // // // // // //           title: "Journal d'audit",
+// // // // // // // // //           lines: items.map((r, i) => {
+// // // // // // // // //             const who = userMap[Number(r.user_id)] || (r.user_id != null ? `Utilisateur #${r.user_id}` : "—");
+// // // // // // // // //             return {
+// // // // // // // // //               text: `${i + 1}. ${formatDateFr(r.created_at || r.date)} · ${r.action || "—"} · ${r.entity || r.entity_type || ""} · par ${who}`,
+// // // // // // // // //             };
+// // // // // // // // //           }),
+// // // // // // // // //         });
+// // // // // // // // //       }
+
+// // // // // // // // //       const doc = await buildPremiumPdf({
+// // // // // // // // //         themeName: theme,
+// // // // // // // // //         docTitle: TYPE_LABEL[type] || type,
+// // // // // // // // //         subtitle: filterKey === "all" ? "Export complet" : `Filtre : ${formatDateFr(filterKey)}`,
+// // // // // // // // //         sections,
 // // // // // // // // //       });
+
 // // // // // // // // //       const blob = doc.output("blob");
 // // // // // // // // //       if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
 // // // // // // // // //       const url = URL.createObjectURL(blob);
 // // // // // // // // //       const fname = `carousel_${type}_${new Date().toISOString().slice(0, 10)}.pdf`;
 // // // // // // // // //       setPdfBlobUrl(url);
 // // // // // // // // //       setPdfFileName(fname);
-// // // // // // // // //       await new Promise((r) => setTimeout(r, 900));
+// // // // // // // // //       await new Promise((r) => setTimeout(r, 700));
 // // // // // // // // //       setPdfPhase("success");
 // // // // // // // // //     } catch (e) {
 // // // // // // // // //       alert(e.message || "Échec export");
@@ -8609,14 +10289,20 @@
 // // // // // // // //     return `/images/${p}`;
 // // // // // // // //   }
 // // // // // // // //   const base = buildImageFileName(item);
-// // // // // // // //   return base ? `/images/items/${base}.jpg` : null;
+// // // // // // // //   if (!base) return null;
+// // // // // // // //   return `/images/items/${base}.jpg`;
 // // // // // // // // }
 
 // // // // // // // // function toIconSrc(icon) {
-// // // // // // // //   if (!icon || typeof icon !== "string") return null;
+// // // // // // // //   if (icon == null || typeof icon !== "string") return null;
 // // // // // // // //   let s = icon.trim();
 // // // // // // // //   if (!s) return null;
-// // // // // // // //   if (s.startsWith("data:") || s.startsWith("http://") || s.startsWith("https://") || s.startsWith("blob:"))
+// // // // // // // //   if (
+// // // // // // // //     s.startsWith("data:") ||
+// // // // // // // //     s.startsWith("http://") ||
+// // // // // // // //     s.startsWith("https://") ||
+// // // // // // // //     s.startsWith("blob:")
+// // // // // // // //   )
 // // // // // // // //     return s;
 // // // // // // // //   if (s.startsWith("/") && s.length < 400) return s;
 // // // // // // // //   if (s.length <= 8) return null;
@@ -8627,6 +10313,8 @@
 // // // // // // // //     ? "image/jpeg"
 // // // // // // // //     : clean.startsWith("R0lGOD")
 // // // // // // // //     ? "image/gif"
+// // // // // // // //     : clean.startsWith("UklGR")
+// // // // // // // //     ? "image/webp"
 // // // // // // // //     : "image/png";
 // // // // // // // //   return `data:${mime};base64,${clean}`;
 // // // // // // // // }
@@ -8759,6 +10447,50 @@
 // // // // // // // //   if (!window.jspdf?.jsPDF) throw new Error("jsPDF non chargé");
 // // // // // // // //   return window.jspdf.jsPDF;
 // // // // // // // // }
+
+// // // // // // // // function loadImageAsDataUrl(src) {
+// // // // // // // //   return new Promise((resolve) => {
+// // // // // // // //     if (!src) {
+// // // // // // // //       resolve(null);
+// // // // // // // //       return;
+// // // // // // // //     }
+// // // // // // // //     if (String(src).startsWith("data:")) {
+// // // // // // // //       resolve(src);
+// // // // // // // //       return;
+// // // // // // // //     }
+// // // // // // // //     const img = new Image();
+// // // // // // // //     img.crossOrigin = "anonymous";
+// // // // // // // //     img.onload = () => {
+// // // // // // // //       try {
+// // // // // // // //         const canvas = document.createElement("canvas");
+// // // // // // // //         const max = 320;
+// // // // // // // //         let w = img.naturalWidth || img.width;
+// // // // // // // //         let h = img.naturalHeight || img.height;
+// // // // // // // //         if (w > max || h > max) {
+// // // // // // // //           const r = Math.min(max / w, max / h);
+// // // // // // // //           w = Math.round(w * r);
+// // // // // // // //           h = Math.round(h * r);
+// // // // // // // //         }
+// // // // // // // //         canvas.width = w;
+// // // // // // // //         canvas.height = h;
+// // // // // // // //         const ctx = canvas.getContext("2d");
+// // // // // // // //         ctx.fillStyle = "#ffffff";
+// // // // // // // //         ctx.fillRect(0, 0, w, h);
+// // // // // // // //         ctx.drawImage(img, 0, 0, w, h);
+// // // // // // // //         resolve(canvas.toDataURL("image/jpeg", 0.85));
+// // // // // // // //       } catch {
+// // // // // // // //         resolve(null);
+// // // // // // // //       }
+// // // // // // // //     };
+// // // // // // // //     img.onerror = () => resolve(null);
+// // // // // // // //     try {
+// // // // // // // //       img.src = new URL(src, window.location.origin).href;
+// // // // // // // //     } catch {
+// // // // // // // //       img.src = src;
+// // // // // // // //     }
+// // // // // // // //   });
+// // // // // // // // }
+
 
 
 // // // // // // // // /* ========== PDF PREMIUM (thème + noms lisibles) ========== */
@@ -10493,7 +12225,7 @@
 
 
 
-// // // // // // // /* ========== PDF PREMIUM (thème + noms lisibles) ========== */
+// // // // // // // /* ========== PDF PREMIUM — barres thème, cover, 1 page/entité ========== */
 // // // // // // // function getPdfThemeColors(themeName) {
 // // // // // // //   const map = {
 // // // // // // //     "dark-galaxy": { primary: [139, 92, 246], secondary: [99, 102, 241], accent: [167, 139, 250] },
@@ -10520,171 +12252,259 @@
 // // // // // // //   return map[themeName] || map["dark-galaxy"];
 // // // // // // // }
 
+
 // // // // // // // function userDisplayName(u) {
-// // // // // // //   if (!u) return null;
-// // // // // // //   const n = [u.first_name, u.name, u.middle_name].filter(Boolean).join(" ").trim();
-// // // // // // //   return n || u.email || null;
+// // // // // // //     if (!u) return null;
+
+// // // // // // //     const n = [u.first_name, u.name].filter(Boolean).join(" ").trim();
+
+// // // // // // //     return n || u.email || u.username || `Utilisateur #${u.id}` || null;
 // // // // // // // }
 
-// // // // // // // /**
-// // // // // // //  * Construit un PDF A4 premium avec couleurs du thème.
-// // // // // // //  * sections: [{ title, color?, rows: [{label, value, color?}], imageSrc?, imageCaption? }]
-// // // // // // //  */
-// // // // // // // async function buildPremiumPdf({ themeName, docTitle, subtitle, sections }) {
+
+// // // // // // // async function buildPremiumPdf(opts) {
+// // // // // // //   const { themeName, docTitle, subtitle, cover = null, pages: pagesIn, sections } = opts || {};
+// // // // // // //   let pages = pagesIn;
+// // // // // // //   if (!pages && sections) {
+// // // // // // //     pages = [
+// // // // // // //       {
+// // // // // // //         typeLabel: sections[0]?.typeLabel || docTitle,
+// // // // // // //         title: sections[0]?.imageCaption || sections[0]?.title || docTitle,
+// // // // // // //         imageSrc: sections[0]?.imageSrc,
+// // // // // // //         imageCaption: sections[0]?.imageCaption,
+// // // // // // //         imageSub: sections[0]?.imageSub,
+// // // // // // //         imageSize: sections[0]?.imageSize || 32,
+// // // // // // //         rows: (sections || []).flatMap((s) => s.rows || []),
+// // // // // // //         articles: sections.find((s) => s.articles)?.articles || null,
+// // // // // // //         _extraLines: (sections || [])
+// // // // // // //           .slice(1)
+// // // // // // //           .filter((s) => s.lines && s.lines.length)
+// // // // // // //           .map((s) => ({ title: s.title, lines: s.lines })),
+// // // // // // //       },
+// // // // // // //     ];
+// // // // // // //   }
+// // // // // // //   if (!pages || !pages.length) pages = [{ title: docTitle || "Export", rows: [] }];
+
 // // // // // // //   const JsPDF = await loadJsPDF();
 // // // // // // //   const doc = new JsPDF({ unit: "mm", format: "a4" });
 // // // // // // //   const pageW = doc.internal.pageSize.getWidth();
 // // // // // // //   const pageH = doc.internal.pageSize.getHeight();
-// // // // // // //   const margin = 14;
-// // // // // // //   let y = margin;
+// // // // // // //   const margin = 16;
+// // // // // // //   const footerH = 14;
+// // // // // // //   const headerH = 28;
 // // // // // // //   const colors = getPdfThemeColors(themeName);
 // // // // // // //   const primary = colors.primary;
-// // // // // // //   const secondary = colors.secondary;
 // // // // // // //   const accent = colors.accent;
-// // // // // // //   const slate = [51, 65, 85];
+// // // // // // //   const slate = [30, 41, 59];
 // // // // // // //   const muted = [100, 116, 139];
-// // // // // // //   const green = [22, 163, 74];
-// // // // // // //   const red = [220, 38, 38];
-// // // // // // //   const amber = [217, 119, 6];
+// // // // // // //   const lineGray = [226, 232, 240];
 
-// // // // // // //   const ensure = (need = 12) => {
-// // // // // // //     if (y + need > pageH - 16) {
-// // // // // // //       doc.addPage();
-// // // // // // //       // thin top bar on continuation pages
-// // // // // // //       doc.setFillColor(...primary);
-// // // // // // //       doc.rect(0, 0, pageW, 4, "F");
-// // // // // // //       y = margin + 2;
-// // // // // // //     }
-// // // // // // //   };
-
-// // // // // // //   // ===== Header bandeau =====
-// // // // // // //   doc.setFillColor(...primary);
-// // // // // // //   doc.rect(0, 0, pageW, 26, "F");
-// // // // // // //   // accent line
-// // // // // // //   doc.setFillColor(...accent);
-// // // // // // //   doc.rect(0, 26, pageW, 1.4, "F");
-// // // // // // //   doc.setTextColor(255, 255, 255);
-// // // // // // //   doc.setFont("helvetica", "bold");
-// // // // // // //   doc.setFontSize(16);
-// // // // // // //   doc.text(APP_NAME, margin, 11);
-// // // // // // //   doc.setFont("helvetica", "normal");
-// // // // // // //   doc.setFontSize(9);
-// // // // // // //   doc.text(COMPANY_NAME, margin, 18);
-// // // // // // //   doc.text(new Date().toLocaleString("fr-FR"), pageW - margin, 14, { align: "right" });
-// // // // // // //   y = 34;
-
-// // // // // // //   // Document title
-// // // // // // //   doc.setFont("helvetica", "bold");
-// // // // // // //   doc.setFontSize(13);
-// // // // // // //   doc.setTextColor(...slate);
-// // // // // // //   doc.text(String(docTitle || "Export"), margin, y);
-// // // // // // //   y += 6;
-// // // // // // //   if (subtitle) {
-// // // // // // //     doc.setFont("helvetica", "normal");
-// // // // // // //     doc.setFontSize(9);
-// // // // // // //     doc.setTextColor(...muted);
-// // // // // // //     doc.text(String(subtitle), margin, y);
-// // // // // // //     y += 7;
-// // // // // // //   }
-// // // // // // //   y += 2;
-
-// // // // // // //   const title = (t, color = primary) => {
-// // // // // // //     ensure(12);
-// // // // // // //     doc.setFillColor(...color);
-// // // // // // //     doc.roundedRect(margin, y, pageW - margin * 2, 8, 1.5, 1.5, "F");
+// // // // // // //   const drawHeader = (isCover = false) => {
+// // // // // // //     doc.setFillColor(...primary);
+// // // // // // //     doc.rect(0, 0, pageW, isCover ? 40 : headerH, "F");
+// // // // // // //     doc.setFillColor(...accent);
+// // // // // // //     doc.rect(0, isCover ? 40 : headerH, pageW, 1.6, "F");
 // // // // // // //     doc.setTextColor(255, 255, 255);
 // // // // // // //     doc.setFont("helvetica", "bold");
-// // // // // // //     doc.setFontSize(10.5);
-// // // // // // //     doc.text(String(t), margin + 3, y + 5.4);
-// // // // // // //     y += 12;
+// // // // // // //     doc.setFontSize(isCover ? 22 : 15);
+// // // // // // //     doc.text(APP_NAME, margin, isCover ? 18 : 12);
+// // // // // // //     doc.setFont("helvetica", "normal");
+// // // // // // //     doc.setFontSize(isCover ? 11 : 9);
+// // // // // // //     doc.text(COMPANY_NAME, margin, isCover ? 27 : 19);
+// // // // // // //     if (!isCover) {
+// // // // // // //       doc.setFontSize(8);
+// // // // // // //       doc.text(new Date().toLocaleString("fr-FR"), pageW - margin, 14, { align: "right" });
+// // // // // // //     }
+// // // // // // //   };
+
+// // // // // // //   const drawFooter = (pageNum, total) => {
+// // // // // // //     doc.setDrawColor(...primary);
+// // // // // // //     doc.setLineWidth(0.4);
+// // // // // // //     doc.line(margin, pageH - footerH, pageW - margin, pageH - footerH);
+// // // // // // //     doc.setFillColor(...primary);
+// // // // // // //     doc.rect(0, pageH - 6, pageW, 6, "F");
+// // // // // // //     doc.setTextColor(255, 255, 255);
+// // // // // // //     doc.setFont("helvetica", "normal");
+// // // // // // //     doc.setFontSize(7.5);
+// // // // // // //     doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, pageH - 2.2);
+// // // // // // //     doc.text(`Page ${pageNum} / ${total}`, pageW - margin, pageH - 2.2, { align: "right" });
+// // // // // // //   };
+
+// // // // // // //   let y = margin;
+// // // // // // //   const ensure = (need = 10) => {
+// // // // // // //     if (y + need > pageH - footerH - 4) {
+// // // // // // //       doc.addPage();
+// // // // // // //       drawHeader(false);
+// // // // // // //       y = headerH + 10;
+// // // // // // //     }
+// // // // // // //   };
+
+// // // // // // //   if (cover) {
+// // // // // // //     drawHeader(true);
+// // // // // // //     y = 75;
 // // // // // // //     doc.setTextColor(...slate);
-// // // // // // //   };
-
-// // // // // // //   const kv = (label, value, c = slate) => {
-// // // // // // //     ensure(7);
-// // // // // // //     doc.setFont("helvetica", "normal");
-// // // // // // //     doc.setFontSize(9.5);
-// // // // // // //     doc.setTextColor(...muted);
-// // // // // // //     doc.text(String(label), margin, y);
 // // // // // // //     doc.setFont("helvetica", "bold");
-// // // // // // //     doc.setTextColor(...c);
-// // // // // // //     const val = String(value ?? "—");
-// // // // // // //     const maxW = pageW - margin * 2 - 55;
-// // // // // // //     const lines = doc.splitTextToSize(val.length > 120 ? val.slice(0, 117) + "…" : val, maxW);
-// // // // // // //     doc.text(lines[0], pageW - margin, y, { align: "right" });
-// // // // // // //     y += 6.2;
-// // // // // // //     for (let i = 1; i < lines.length; i++) {
-// // // // // // //       ensure(6);
-// // // // // // //       doc.text(lines[i], pageW - margin, y, { align: "right" });
-// // // // // // //       y += 5.5;
+// // // // // // //     doc.setFontSize(20);
+// // // // // // //     doc.text(String(cover.title || docTitle || "Export"), pageW / 2, y, { align: "center" });
+// // // // // // //     y += 12;
+// // // // // // //     if (cover.subtitle || subtitle) {
+// // // // // // //       doc.setFont("helvetica", "normal");
+// // // // // // //       doc.setFontSize(11);
+// // // // // // //       doc.setTextColor(...muted);
+// // // // // // //       doc.text(String(cover.subtitle || subtitle), pageW / 2, y, { align: "center" });
+// // // // // // //       y += 10;
 // // // // // // //     }
-// // // // // // //   };
+// // // // // // //     doc.setFontSize(9);
+// // // // // // //     doc.setTextColor(...muted);
+// // // // // // //     doc.text(new Date().toLocaleString("fr-FR"), pageW / 2, y + 6, { align: "center" });
+// // // // // // //   }
 
-// // // // // // //   const bodyLine = (text, size = 9, c = slate) => {
-// // // // // // //     ensure(6);
-// // // // // // //     doc.setFont("helvetica", "normal");
-// // // // // // //     doc.setFontSize(size);
-// // // // // // //     doc.setTextColor(...c);
-// // // // // // //     const wrapped = doc.splitTextToSize(String(text), pageW - margin * 2);
-// // // // // // //     for (const line of wrapped) {
-// // // // // // //       ensure(5.5);
-// // // // // // //       doc.text(line, margin, y);
-// // // // // // //       y += 5.2;
+// // // // // // //   for (let i = 0; i < pages.length; i++) {
+// // // // // // //     const page = pages[i];
+// // // // // // //     if (cover || i > 0) doc.addPage();
+// // // // // // //     drawHeader(false);
+// // // // // // //     y = headerH + 10;
+
+// // // // // // //     if (page.typeLabel) {
+// // // // // // //       doc.setFont("helvetica", "bold");
+// // // // // // //       doc.setFontSize(11);
+// // // // // // //       doc.setTextColor(...primary);
+// // // // // // //       doc.text(String(page.typeLabel).toUpperCase(), pageW / 2, y, { align: "center" });
+// // // // // // //       y += 9;
 // // // // // // //     }
-// // // // // // //   };
 
-// // // // // // //   for (const sec of sections || []) {
-// // // // // // //     if (sec.title) title(sec.title, sec.color || primary);
-// // // // // // //     if (sec.imageSrc) {
-// // // // // // //       const dataUrl = await loadImageAsDataUrl(sec.imageSrc);
+// // // // // // //     if (page.imageSrc) {
+// // // // // // //       const dataUrl = await loadImageAsDataUrl(page.imageSrc);
 // // // // // // //       if (dataUrl) {
-// // // // // // //         const size = sec.imageSize || 28;
-// // // // // // //         ensure(size + 6);
+// // // // // // //         const size = page.imageSize || 32;
+// // // // // // //         ensure(size + 8);
 // // // // // // //         try {
 // // // // // // //           doc.addImage(dataUrl, "JPEG", margin, y, size, size);
-// // // // // // //           if (sec.imageCaption) {
-// // // // // // //             doc.setFont("helvetica", "bold");
-// // // // // // //             doc.setFontSize(12);
-// // // // // // //             doc.setTextColor(...slate);
-// // // // // // //             doc.text(String(sec.imageCaption), margin + size + 4, y + 10);
-// // // // // // //             if (sec.imageSub) {
-// // // // // // //               doc.setFont("helvetica", "normal");
-// // // // // // //               doc.setFontSize(9);
-// // // // // // //               doc.setTextColor(...muted);
-// // // // // // //               doc.text(String(sec.imageSub), margin + size + 4, y + 16);
-// // // // // // //             }
+// // // // // // //           doc.setFont("helvetica", "bold");
+// // // // // // //           doc.setFontSize(14);
+// // // // // // //           doc.setTextColor(...slate);
+// // // // // // //           doc.text(String(page.imageCaption || page.title || ""), margin + size + 5, y + 12);
+// // // // // // //           if (page.imageSub) {
+// // // // // // //             doc.setFont("helvetica", "normal");
+// // // // // // //             doc.setFontSize(9);
+// // // // // // //             doc.setTextColor(...muted);
+// // // // // // //             const subLines = doc.splitTextToSize(String(page.imageSub), pageW - margin * 2 - size - 8);
+// // // // // // //             doc.text(subLines, margin + size + 5, y + 19);
 // // // // // // //           }
-// // // // // // //           y += size + 6;
-// // // // // // //         } catch {
-// // // // // // //           /* skip image */
+// // // // // // //           y += size + 8;
+// // // // // // //         } catch { /* skip */ }
+// // // // // // //       }
+// // // // // // //     } else if (page.title) {
+// // // // // // //       doc.setFont("helvetica", "bold");
+// // // // // // //       doc.setFontSize(14);
+// // // // // // //       doc.setTextColor(...slate);
+// // // // // // //       doc.text(String(page.title), margin, y);
+// // // // // // //       y += 8;
+// // // // // // //     }
+
+// // // // // // //     const colMid = pageW / 2;
+// // // // // // //     for (const row of page.rows || []) {
+// // // // // // //       ensure(8);
+// // // // // // //       doc.setFont("helvetica", "normal");
+// // // // // // //       doc.setFontSize(9.5);
+// // // // // // //       doc.setTextColor(...muted);
+// // // // // // //       doc.text(String(row.label), margin, y);
+// // // // // // //       doc.setFont("helvetica", "bold");
+// // // // // // //       doc.setTextColor(...primary);
+// // // // // // //       doc.text(":", colMid, y, { align: "center" });
+// // // // // // //       doc.setTextColor(...slate);
+// // // // // // //       const val = String(row.value ?? "—");
+// // // // // // //       const maxW = pageW - margin - colMid - 4;
+// // // // // // //       const ls = doc.splitTextToSize(val, maxW);
+// // // // // // //       doc.text(ls[0], colMid + 4, y);
+// // // // // // //       y += 6.5;
+// // // // // // //       for (let k = 1; k < ls.length; k++) {
+// // // // // // //         ensure(6);
+// // // // // // //         doc.text(ls[k], colMid + 4, y);
+// // // // // // //         y += 5.5;
+// // // // // // //       }
+// // // // // // //     }
+
+// // // // // // //     if (page._extraLines) {
+// // // // // // //       for (const block of page._extraLines) {
+// // // // // // //         y += 3;
+// // // // // // //         ensure(12);
+// // // // // // //         doc.setFillColor(...primary);
+// // // // // // //         doc.roundedRect(margin, y, pageW - margin * 2, 8, 1.5, 1.5, "F");
+// // // // // // //         doc.setTextColor(255, 255, 255);
+// // // // // // //         doc.setFont("helvetica", "bold");
+// // // // // // //         doc.setFontSize(10);
+// // // // // // //         doc.text(String(block.title || ""), margin + 3, y + 5.4);
+// // // // // // //         y += 12;
+// // // // // // //         for (const ln of block.lines || []) {
+// // // // // // //           ensure(6);
+// // // // // // //           doc.setFont("helvetica", "normal");
+// // // // // // //           doc.setFontSize(8.5);
+// // // // // // //           doc.setTextColor(...muted);
+// // // // // // //           const wrapped = doc.splitTextToSize(String(ln.text || ln), pageW - margin * 2);
+// // // // // // //           for (const w of wrapped) {
+// // // // // // //             ensure(5.5);
+// // // // // // //             doc.text(w, margin, y);
+// // // // // // //             y += 5;
+// // // // // // //           }
 // // // // // // //         }
 // // // // // // //       }
 // // // // // // //     }
-// // // // // // //     for (const row of sec.rows || []) {
-// // // // // // //       kv(row.label, row.value, row.color || slate);
+
+// // // // // // //     if (page.articles && page.articles.length) {
+// // // // // // //       y += 4;
+// // // // // // //       ensure(12);
+// // // // // // //       doc.setFillColor(...primary);
+// // // // // // //       doc.roundedRect(margin, y, pageW - margin * 2, 8, 1.5, 1.5, "F");
+// // // // // // //       doc.setTextColor(255, 255, 255);
+// // // // // // //       doc.setFont("helvetica", "bold");
+// // // // // // //       doc.setFontSize(10);
+// // // // // // //       doc.text("Articles de la catégorie", margin + 3, y + 5.4);
+// // // // // // //       y += 12;
+// // // // // // //       for (let idx = 0; idx < page.articles.length; idx++) {
+// // // // // // //         const art = page.articles[idx];
+// // // // // // //         const rowH = 18;
+// // // // // // //         ensure(rowH + 2);
+// // // // // // //         doc.setDrawColor(...lineGray);
+// // // // // // //         doc.setLineWidth(0.3);
+// // // // // // //         doc.line(margin, y - 2, pageW - margin, y - 2);
+// // // // // // //         doc.setFont("helvetica", "bold");
+// // // // // // //         doc.setFontSize(10);
+// // // // // // //         doc.setTextColor(...primary);
+// // // // // // //         doc.text(`${idx + 1}.`, margin, y + 8);
+// // // // // // //         let xText = margin + 10;
+// // // // // // //         if (art.img) {
+// // // // // // //           const dataUrl = await loadImageAsDataUrl(art.img);
+// // // // // // //           if (dataUrl) {
+// // // // // // //             try {
+// // // // // // //               doc.addImage(dataUrl, "JPEG", margin + 10, y, 14, 14);
+// // // // // // //               xText = margin + 28;
+// // // // // // //             } catch { /* skip */ }
+// // // // // // //           }
+// // // // // // //         }
+// // // // // // //         doc.setFont("helvetica", "bold");
+// // // // // // //         doc.setFontSize(10);
+// // // // // // //         doc.setTextColor(...slate);
+// // // // // // //         doc.text(String(art.name || "—"), xText, y + 6);
+// // // // // // //         doc.setFont("helvetica", "normal");
+// // // // // // //         doc.setFontSize(8);
+// // // // // // //         doc.setTextColor(...muted);
+// // // // // // //         const sub = [art.extra, art.stock].filter(Boolean).join("  ·  ");
+// // // // // // //         if (sub) doc.text(sub, xText, y + 12);
+// // // // // // //         y += rowH;
+// // // // // // //       }
 // // // // // // //     }
-// // // // // // //     if (sec.lines) {
-// // // // // // //       for (const ln of sec.lines) bodyLine(ln.text, ln.size || 8.5, ln.color || muted);
-// // // // // // //     }
-// // // // // // //     y += 2;
 // // // // // // //   }
 
-// // // // // // //   // Footer on last page
 // // // // // // //   const pageCount = doc.internal.getNumberOfPages();
 // // // // // // //   for (let p = 1; p <= pageCount; p++) {
 // // // // // // //     doc.setPage(p);
-// // // // // // //     doc.setDrawColor(...primary);
-// // // // // // //     doc.setLineWidth(0.3);
-// // // // // // //     doc.line(margin, pageH - 10, pageW - margin, pageH - 10);
-// // // // // // //     doc.setFont("helvetica", "normal");
-// // // // // // //     doc.setFontSize(8);
-// // // // // // //     doc.setTextColor(...muted);
-// // // // // // //     doc.text(`${APP_NAME} · ${COMPANY_NAME}`, margin, pageH - 5);
-// // // // // // //     doc.text(`Page ${p} / ${pageCount}`, pageW - margin, pageH - 5, { align: "right" });
+// // // // // // //     drawFooter(p, pageCount);
 // // // // // // //   }
-
 // // // // // // //   return doc;
 // // // // // // // }
+
+
 
 
 // // // // // // // const TYPE_LABEL = {
@@ -10921,12 +12741,35 @@
 // // // // // // //         },
 // // // // // // //       ];
 
+// // // // // // //       let __carouselPages = null;
+// // // // // // //       let __carouselCover = null;
 // // // // // // //       if (type === "categorie") {
-// // // // // // //         sections.push({
-// // // // // // //           title: "Liste des catégories",
-// // // // // // //           lines: items.map((cat, i) => ({
-// // // // // // //             text: `${i + 1}. ${cat.name} · ${(cat._articles || []).length} article(s)`,
-// // // // // // //           })),
+// // // // // // //         __carouselCover = {
+// // // // // // //           title: "Catégories",
+// // // // // // //           subtitle: `Export StockFlow — ${items.length} élément(s)`,
+// // // // // // //         };
+// // // // // // //         __carouselPages = items.map((cat) => {
+// // // // // // //           const catItems = cat._articles || cat.articles || [];
+// // // // // // //           const articlesPdf = catItems.map((it) => ({
+// // // // // // //             img: getArticleImageSrc(it),
+// // // // // // //             name: designation(it),
+// // // // // // //             extra: [it.mark, it.modele, it.color || it.couleur].filter(Boolean).join(" · "),
+// // // // // // //             stock: `stock: ${convertirQuantite(it.stockReel ?? 0, it)}`,
+// // // // // // //           }));
+// // // // // // //           return {
+// // // // // // //             typeLabel: "Catégorie",
+// // // // // // //             title: cat.name,
+// // // // // // //             imageSrc: toIconSrc(cat.icon),
+// // // // // // //             imageCaption: cat.name,
+// // // // // // //             imageSub: cat.description || "",
+// // // // // // //             imageSize: 34,
+// // // // // // //             rows: [
+// // // // // // //               { label: "Nom", value: cat.name || "—" },
+// // // // // // //               { label: "Description", value: cat.description || "—" },
+// // // // // // //               { label: "Articles liés", value: String(catItems.length) },
+// // // // // // //             ],
+// // // // // // //             articles: articlesPdf,
+// // // // // // //           };
 // // // // // // //         });
 // // // // // // //       } else if (type === "article") {
 // // // // // // //         sections.push({
@@ -10977,7 +12820,9 @@
 // // // // // // //         themeName: theme,
 // // // // // // //         docTitle: TYPE_LABEL[type] || type,
 // // // // // // //         subtitle: filterKey === "all" ? "Export complet" : `Filtre : ${formatDateFr(filterKey)}`,
-// // // // // // //         sections,
+// // // // // // //         cover: __carouselCover || null,
+// // // // // // //         pages: __carouselPages || undefined,
+// // // // // // //         sections: __carouselPages ? undefined : sections,
 // // // // // // //       });
 
 // // // // // // //       const blob = doc.output("blob");
@@ -11939,37 +13784,40 @@
 
 
 
+
+
+
 // // // // // // /**
 // // // // // //  * DetailsCarousel — Detail All
 // // // // // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
-// // // // // //  * Style + export PDF normalisés (même hiérarchie que Details)
+// // // // // //  * PDF unifié (cover + 1 page / élément) — StockFlow · L'étoile du matin
 // // // // // //  */
 
 // // // // // // import { useEffect, useState, useCallback } from "react";
-// // // // // // import { useNavigate, useParams, useLocation } from "react-router-dom";
+// // // // // // import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 // // // // // // import {
 // // // // // //   ArrowLeft,
-// // // // // //   ChevronUp,
-// // // // // //   ChevronDown,
 // // // // // //   Package,
 // // // // // //   Tag,
 // // // // // //   Warehouse,
 // // // // // //   Users,
+// // // // // //   ArrowLeftRight,
 // // // // // //   Image as ImageIcon,
 // // // // // //   Calendar,
 // // // // // //   Hash,
 // // // // // //   Boxes,
-// // // // // //   Info,
-// // // // // //   ExternalLink,
-// // // // // //   Shield,
-// // // // // //   Layers,
-// // // // // //   ScrollText,
-// // // // // //   Clock,
-// // // // // //   Download,
-// // // // // //   FileText,
 // // // // // //   CheckCircle,
+// // // // // //   Mail,
+// // // // // //   Shield,
+// // // // // //   Clock,
+// // // // // //   Info,
+// // // // // //   Download,
+// // // // // //   Layers,
+// // // // // //   X,
+// // // // // //   FileText,
+// // // // // //   ExternalLink,
 // // // // // //   Share2,
-// // // // // //   ArrowLeftRight,
+// // // // // //   ScrollText,
 // // // // // // } from "lucide-react";
 // // // // // // import ThemeBackground, { themeCssVars } from "../components/ThemeBackground";
 // // // // // // import Footer from "../components/Footer";
@@ -12001,6 +13849,7 @@
 // // // // // // const APP_NAME = "StockFlow";
 // // // // // // const COMPANY_NAME = "L'étoile du matin";
 
+// // // // // // /* ========== HELPERS ========== */
 // // // // // // function buildImageFileName(item) {
 // // // // // //   const parts = [item?.name, item?.mark, item?.modele]
 // // // // // //     .map((p) => (p || "").toString().trim())
@@ -12051,11 +13900,6 @@
 // // // // // //   return `data:${mime};base64,${clean}`;
 // // // // // // }
 
-// // // // // // function designation(item) {
-// // // // // //   if (!item) return "—";
-// // // // // //   return [item.name, item.mark, item.modele].filter(Boolean).join(" · ") || "—";
-// // // // // // }
-
 // // // // // // function formatDateFr(iso) {
 // // // // // //   if (!iso || iso === "—") return "—";
 // // // // // //   const s = String(iso).slice(0, 10);
@@ -12071,10 +13915,9 @@
 // // // // // //   return `${parseInt(d, 10)} ${mois[mi]} ${y}`;
 // // // // // // }
 
-// // // // // // function dateKeyOf(row) {
-// // // // // //   return (
-// // // // // //     (row.date || row.created_at || row.update_at || "").toString().slice(0, 10) || "—"
-// // // // // //   );
+// // // // // // function designation(item) {
+// // // // // //   if (!item) return "—";
+// // // // // //   return [item.name, item.mark, item.modele].filter(Boolean).join(" · ") || "—";
 // // // // // // }
 
 // // // // // // function convertirQuantite(qte, stock) {
@@ -12161,9 +14004,35 @@
 // // // // // //   return total;
 // // // // // // };
 
+// // // // // // function stockReelEntrepot(itemId, entrepotId, stocks, mouvements, ajustements) {
+// // // // // //   const stock = (stocks || []).find(
+// // // // // //     (s) =>
+// // // // // //       Number(s.item_id) === Number(itemId) &&
+// // // // // //       Number(s.entrepot_id) === Number(entrepotId) &&
+// // // // // //       Number(s.deleted ?? 0) === 0
+// // // // // //   );
+// // // // // //   let q = Number(stock?.stock_actual ?? 0);
+// // // // // //   [...(mouvements || []), ...(ajustements || [])]
+// // // // // //     .filter(
+// // // // // //       (m) =>
+// // // // // //         Number(m.item_id) === Number(itemId) &&
+// // // // // //         Number(m.entrepot_id) === Number(entrepotId) &&
+// // // // // //         Number(m.deleted ?? 0) === 0
+// // // // // //     )
+// // // // // //     .forEach((m) => {
+// // // // // //       const qty = Number(m.qty ?? 0);
+// // // // // //       if (m.type === "Entrée") q += qty;
+// // // // // //       else if (m.type === "Sortie") q -= qty;
+// // // // // //     });
+// // // // // //   return q;
+// // // // // // }
+
 // // // // // // function loadScript(src) {
 // // // // // //   return new Promise((resolve, reject) => {
-// // // // // //     if (document.querySelector(`script[src="${src}"]`)) return resolve();
+// // // // // //     if (document.querySelector(`script[src="${src}"]`)) {
+// // // // // //       resolve();
+// // // // // //       return;
+// // // // // //     }
 // // // // // //     const s = document.createElement("script");
 // // // // // //     s.src = src;
 // // // // // //     s.async = true;
@@ -12224,7 +14093,6 @@
 // // // // // // }
 
 
-
 // // // // // // /* ========== PDF PREMIUM — barres thème, cover, 1 page/entité ========== */
 // // // // // // function getPdfThemeColors(themeName) {
 // // // // // //   const map = {
@@ -12254,13 +14122,10 @@
 
 
 // // // // // // function userDisplayName(u) {
-// // // // // //     if (!u) return null;
-
-// // // // // //     const n = [u.first_name, u.name].filter(Boolean).join(" ").trim();
-
-// // // // // //     return n || u.email || u.username || `Utilisateur #${u.id}` || null;
+// // // // // //   if (!u) return null;
+// // // // // //   const n = [u.first_name, u.name, u.middle_name].filter(Boolean).join(" ").trim();
+// // // // // //   return n || u.email || null;
 // // // // // // }
-
 
 // // // // // // async function buildPremiumPdf(opts) {
 // // // // // //   const { themeName, docTitle, subtitle, cover = null, pages: pagesIn, sections } = opts || {};
@@ -12459,7 +14324,7 @@
 // // // // // //       doc.setTextColor(255, 255, 255);
 // // // // // //       doc.setFont("helvetica", "bold");
 // // // // // //       doc.setFontSize(10);
-// // // // // //       doc.text("Articles de la catégorie", margin + 3, y + 5.4);
+// // // // // //       doc.text(page.articlesTitle || "Articles liés", margin + 3, y + 5.4);
 // // // // // //       y += 12;
 // // // // // //       for (let idx = 0; idx < page.articles.length; idx++) {
 // // // // // //         const art = page.articles[idx];
@@ -12503,6 +14368,7 @@
 // // // // // //   }
 // // // // // //   return doc;
 // // // // // // }
+
 
 
 
@@ -12731,31 +14597,15 @@
 // // // // // //         }
 // // // // // //       } catch {}
 
-// // // // // //       const sections = [
-// // // // // //         {
-// // // // // //           title: TYPE_LABEL[type] || type,
-// // // // // //           rows: [
-// // // // // //             { label: "Filtre", value: filterKey === "all" ? "Tous les éléments" : formatDateFr(filterKey) },
-// // // // // //             { label: "Nombre d'éléments", value: items.length },
-// // // // // //           ],
-// // // // // //         },
-// // // // // //       ];
+// // // // // //       let pages = [];
+// // // // // //       let cover = {
+// // // // // //         title: TYPE_LABEL[type] || type,
+// // // // // //         subtitle: `Export StockFlow — ${items.length} élément(s)`,
+// // // // // //       };
 
-// // // // // //       let __carouselPages = null;
-// // // // // //       let __carouselCover = null;
 // // // // // //       if (type === "categorie") {
-// // // // // //         __carouselCover = {
-// // // // // //           title: "Catégories",
-// // // // // //           subtitle: `Export StockFlow — ${items.length} élément(s)`,
-// // // // // //         };
-// // // // // //         __carouselPages = items.map((cat) => {
+// // // // // //         pages = items.map((cat) => {
 // // // // // //           const catItems = cat._articles || cat.articles || [];
-// // // // // //           const articlesPdf = catItems.map((it) => ({
-// // // // // //             img: getArticleImageSrc(it),
-// // // // // //             name: designation(it),
-// // // // // //             extra: [it.mark, it.modele, it.color || it.couleur].filter(Boolean).join(" · "),
-// // // // // //             stock: `stock: ${convertirQuantite(it.stockReel ?? 0, it)}`,
-// // // // // //           }));
 // // // // // //           return {
 // // // // // //             typeLabel: "Catégorie",
 // // // // // //             title: cat.name,
@@ -12768,61 +14618,139 @@
 // // // // // //               { label: "Description", value: cat.description || "—" },
 // // // // // //               { label: "Articles liés", value: String(catItems.length) },
 // // // // // //             ],
-// // // // // //             articles: articlesPdf,
+// // // // // //             articlesTitle: "Articles de la catégorie",
+// // // // // //             articles: catItems.map((it) => ({
+// // // // // //               img: getArticleImageSrc(it),
+// // // // // //               name: designation(it),
+// // // // // //               extra: [it.mark, it.modele, it.color || it.couleur].filter(Boolean).join(" · "),
+// // // // // //               stock: `stock: ${convertirQuantite(it.stockReel ?? 0, it)}`,
+// // // // // //             })),
 // // // // // //           };
 // // // // // //         });
 // // // // // //       } else if (type === "article") {
-// // // // // //         sections.push({
-// // // // // //           title: "Liste des articles",
-// // // // // //           lines: items.map((it, i) => ({
-// // // // // //             text: `${i + 1}. ${designation(it)} · ${it._catName || "—"} · stock ${convertirQuantite(it.stockReel, it)}`,
-// // // // // //           })),
-// // // // // //         });
+// // // // // //         pages = items.map((it) => ({
+// // // // // //           typeLabel: "Article",
+// // // // // //           title: designation(it),
+// // // // // //           imageSrc: getArticleImageSrc(it),
+// // // // // //           imageCaption: designation(it),
+// // // // // //           imageSub: it._catName || "",
+// // // // // //           imageSize: 36,
+// // // // // //           rows: [
+// // // // // //             { label: "Désignation", value: designation(it) },
+// // // // // //             { label: "Catégorie", value: it._catName || "—" },
+// // // // // //             { label: "Marque", value: it.mark || "—" },
+// // // // // //             { label: "Modèle", value: it.modele || "—" },
+// // // // // //             { label: "Couleur", value: it.color || it.couleur || "—" },
+// // // // // //             { label: "Niveau", value: it.level ?? "—" },
+// // // // // //             { label: "Stock total", value: convertirQuantite(it.stockReel ?? 0, it) },
+// // // // // //             { label: "Stock minimal", value: it.minimal_stock ?? "—" },
+// // // // // //             { label: "Prix de vente (FC)", value: `${it.sale_price_fc ?? "—"}` },
+// // // // // //           ],
+// // // // // //         }));
 // // // // // //       } else if (type === "entrepot") {
-// // // // // //         sections.push({
-// // // // // //           title: "Liste des entrepôts",
-// // // // // //           lines: items.map((e, i) => ({
-// // // // // //             text: `${i + 1}. ${e.name || e.reference || "—"} · ${e.location || e.localisation || ""}`,
-// // // // // //           })),
+// // // // // //         pages = items.map((e) => {
+// // // // // //           const refName = e.name || e.reference || "—";
+// // // // // //           const entItems = e._articles || e.articles || [];
+// // // // // //           return {
+// // // // // //             typeLabel: "Entrepôt",
+// // // // // //             title: refName,
+// // // // // //             imageCaption: refName,
+// // // // // //             imageSub: e.location || e.localisation || "",
+// // // // // //             rows: [
+// // // // // //               { label: "Nom / Référence", value: refName },
+// // // // // //               { label: "Localisation", value: e.location || e.localisation || e.adresse || "—" },
+// // // // // //               { label: "Capacité", value: e.capacity ?? "—" },
+// // // // // //               { label: "Description", value: e.description || "—" },
+// // // // // //               { label: "Articles présents", value: String(entItems.length) },
+// // // // // //             ],
+// // // // // //             articlesTitle: "Articles dans cet entrepôt",
+// // // // // //             articles: entItems.map((it) => ({
+// // // // // //               img: getArticleImageSrc(it),
+// // // // // //               name: designation(it),
+// // // // // //               extra: [it.mark, it.modele].filter(Boolean).join(" · "),
+// // // // // //               stock: `stock: ${convertirQuantite(it.stockEntrepot ?? it.stockReel ?? 0, it)}`,
+// // // // // //             })),
+// // // // // //           };
 // // // // // //         });
 // // // // // //       } else if (type === "utilisateur") {
-// // // // // //         sections.push({
-// // // // // //           title: "Liste des utilisateurs",
-// // // // // //           lines: items.map((u, i) => {
-// // // // // //             const n = userDisplayName(u) || `${u.first_name || ""} ${u.name || ""}`.trim();
-// // // // // //             return { text: `${i + 1}. ${n} · ${u.email || "—"} · ${u.role || "—"}` };
-// // // // // //           }),
+// // // // // //         pages = items.map((u) => {
+// // // // // //           const fullName =
+// // // // // //             userDisplayName(u) ||
+// // // // // //             `${u.first_name || ""} ${u.name || ""}`.trim() ||
+// // // // // //             "—";
+// // // // // //           return {
+// // // // // //             typeLabel: "Utilisateur",
+// // // // // //             title: fullName,
+// // // // // //             rows: [
+// // // // // //               { label: "Nom complet", value: fullName },
+// // // // // //               { label: "Email", value: u.email || "—" },
+// // // // // //               { label: "Rôle", value: u.role || "—" },
+// // // // // //               { label: "Genre", value: u.gender || u.genre || "—" },
+// // // // // //             ],
+// // // // // //           };
 // // // // // //         });
 // // // // // //       } else if (type === "mouvement" || type === "archive") {
-// // // // // //         sections.push({
-// // // // // //           title: type === "archive" ? "Mouvements archivés" : "Mouvements",
-// // // // // //           lines: items.map((m, i) => {
-// // // // // //             const name = m._item ? designation(m._item) : "Article";
-// // // // // //             const ent = m._entrepot?.name || m._entrepot?.reference || "—";
-// // // // // //             return {
-// // // // // //               text: `${i + 1}. ${formatDateFr(m.date || m.created_at)} · ${m.type || "—"} · ${name} · ${ent} · qté ${m.qty ?? "—"}`,
-// // // // // //             };
-// // // // // //           }),
+// // // // // //         pages = items.map((m) => {
+// // // // // //           const it = m._item;
+// // // // // //           const ent = m._entrepot;
+// // // // // //           const entName = ent?.name || ent?.reference || "—";
+// // // // // //           return {
+// // // // // //             typeLabel: type === "archive" ? "Archive" : "Mouvement",
+// // // // // //             title: it ? designation(it) : `Mouvement #${m.id}`,
+// // // // // //             imageSrc: it ? getArticleImageSrc(it) : null,
+// // // // // //             imageCaption: it ? designation(it) : "—",
+// // // // // //             imageSub: `${m.type || "—"} · ${formatDateFr(m.date || m.created_at)}`,
+// // // // // //             imageSize: 32,
+// // // // // //             rows: [
+// // // // // //               { label: "Article", value: it ? designation(it) : `Article #${m.item_id}` },
+// // // // // //               { label: "Type", value: m.type || "—" },
+// // // // // //               { label: "Nature", value: m.nature || "—" },
+// // // // // //               { label: "Entrepôt", value: entName },
+// // // // // //               { label: "Quantité", value: String(m.qty ?? "—") },
+// // // // // //               { label: "Date", value: formatDateFr(m.date || m.created_at) },
+// // // // // //             ],
+// // // // // //           };
 // // // // // //         });
 // // // // // //       } else if (type === "audit") {
-// // // // // //         sections.push({
-// // // // // //           title: "Journal d'audit",
-// // // // // //           lines: items.map((r, i) => {
-// // // // // //             const who = userMap[Number(r.user_id)] || (r.user_id != null ? `Utilisateur #${r.user_id}` : "—");
-// // // // // //             return {
-// // // // // //               text: `${i + 1}. ${formatDateFr(r.created_at || r.date)} · ${r.action || "—"} · ${r.entity || r.entity_type || ""} · par ${who}`,
-// // // // // //             };
-// // // // // //           }),
+// // // // // //         pages = items.map((r) => {
+// // // // // //           const who =
+// // // // // //             userMap[Number(r.user_id)] ||
+// // // // // //             (r.user_id != null ? `Utilisateur #${r.user_id}` : "—");
+// // // // // //           return {
+// // // // // //             typeLabel: "Audit",
+// // // // // //             title: r.action || "Action",
+// // // // // //             rows: [
+// // // // // //               { label: "Action", value: r.action || "—" },
+// // // // // //               { label: "Entité", value: r.entity || r.entity_type || "—" },
+// // // // // //               { label: "Effectué par", value: who },
+// // // // // //               { label: "Date", value: formatDateFr(r.created_at || r.date) },
+// // // // // //               { label: "Détails", value: r.details || r.message || "—" },
+// // // // // //             ],
+// // // // // //           };
 // // // // // //         });
+// // // // // //       } else {
+// // // // // //         cover = null;
+// // // // // //         pages = [
+// // // // // //           {
+// // // // // //             typeLabel: TYPE_LABEL[type] || type,
+// // // // // //             title: "Export",
+// // // // // //             rows: [
+// // // // // //               { label: "Nombre", value: String(items.length) },
+// // // // // //               {
+// // // // // //                 label: "Filtre",
+// // // // // //                 value: filterKey === "all" ? "Tous" : formatDateFr(filterKey),
+// // // // // //               },
+// // // // // //             ],
+// // // // // //           },
+// // // // // //         ];
 // // // // // //       }
 
 // // // // // //       const doc = await buildPremiumPdf({
 // // // // // //         themeName: theme,
 // // // // // //         docTitle: TYPE_LABEL[type] || type,
 // // // // // //         subtitle: filterKey === "all" ? "Export complet" : `Filtre : ${formatDateFr(filterKey)}`,
-// // // // // //         cover: __carouselCover || null,
-// // // // // //         pages: __carouselPages || undefined,
-// // // // // //         sections: __carouselPages ? undefined : sections,
+// // // // // //         cover,
+// // // // // //         pages,
 // // // // // //       });
 
 // // // // // //       const blob = doc.output("blob");
@@ -13779,6 +15707,8 @@
 
 
 
+// // // // // // // import { useEffect, useRef } from "react";
+
 
 
 
@@ -13797,6 +15727,8 @@
 // // // // // import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 // // // // // import {
 // // // // //   ArrowLeft,
+// // // // //   ChevronUp,
+// // // // //   ChevronDown,
 // // // // //   Package,
 // // // // //   Tag,
 // // // // //   Warehouse,
@@ -14125,6 +16057,23 @@
 // // // // //   if (!u) return null;
 // // // // //   const n = [u.first_name, u.name, u.middle_name].filter(Boolean).join(" ").trim();
 // // // // //   return n || u.email || null;
+// // // // // }
+
+
+// // // // // function dateKeyOf(v) {
+// // // // //   if (v == null || v === "") return "";
+// // // // //   const s = String(v);
+// // // // //   // ISO date or datetime → YYYY-MM-DD
+// // // // //   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+// // // // //   // try Date parse
+// // // // //   const d = new Date(s);
+// // // // //   if (!Number.isNaN(d.getTime())) {
+// // // // //     const y = d.getFullYear();
+// // // // //     const m = String(d.getMonth() + 1).padStart(2, "0");
+// // // // //     const day = String(d.getDate()).padStart(2, "0");
+// // // // //     return `${y}-${m}-${day}`;
+// // // // //   }
+// // // // //   return s.slice(0, 10);
 // // // // // }
 
 // // // // // async function buildPremiumPdf(opts) {
@@ -15717,6 +17666,7 @@
 
 
 
+
 // // // // /**
 // // // //  * DetailsCarousel — Detail All
 // // // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
@@ -16577,26 +18527,95 @@
 // // // //           };
 // // // //         });
 // // // //       } else if (type === "article") {
-// // // //         pages = items.map((it) => ({
-// // // //           typeLabel: "Article",
-// // // //           title: designation(it),
-// // // //           imageSrc: getArticleImageSrc(it),
-// // // //           imageCaption: designation(it),
-// // // //           imageSub: it._catName || "",
-// // // //           imageSize: 36,
-// // // //           rows: [
+// // // //         // Charger stocks + mouvements pour enrichir chaque fiche
+// // // //         const [stocksRes, mvtRes, ajRes, entsRes] = await Promise.all([
+// // // //           getStocks().catch(() => ({ data: [] })),
+// // // //           getMouvementsRecents().catch(() => ({ data: [] })),
+// // // //           getStockAjustments().catch(() => ({ data: [] })),
+// // // //           getEntrepots().catch(() => ({ data: [] })),
+// // // //         ]);
+// // // //         const allStocks = stocksRes.data || [];
+// // // //         const allMvt = mvtRes.data || [];
+// // // //         const allAj = ajRes.data || [];
+// // // //         const entMap = Object.fromEntries(
+// // // //           (entsRes.data || []).map((e) => [Number(e.id), e.name || e.reference || "Entrepôt"])
+// // // //         );
+
+// // // //         const valeurEnStock = (it, stockReel) => {
+// // // //           const price = Number(it.sale_price_fc ?? it.sale_price ?? 0) || 0;
+// // // //           const level = Number(it.level) || 1;
+// // // //           const qty = Number(stockReel) || 0;
+// // // //           let mult = 1;
+// // // //           if (level >= 2) mult *= Number(it.qty_by_box) || 1;
+// // // //           if (level >= 3) mult *= Number(it.qty_by_card) || 1;
+// // // //           return Math.round(price * mult * qty * 100) / 100;
+// // // //         };
+
+// // // //         pages = items.map((it) => {
+// // // //           const stockReel =
+// // // //             typeof it.stockReel === "number"
+// // // //               ? it.stockReel
+// // // //               : calculerStockTotal(it.id, allStocks, allMvt, allAj);
+// // // //           const stocksItem = allStocks.filter(
+// // // //             (s) => Number(s.item_id) === Number(it.id) && Number(s.deleted ?? 0) === 0
+// // // //           );
+// // // //           const mvtsItem = [...allMvt, ...allAj]
+// // // //             .filter(
+// // // //               (m) => Number(m.item_id) === Number(it.id) && Number(m.deleted ?? 0) === 0
+// // // //             )
+// // // //             .sort((a, b) =>
+// // // //               String(b.date || b.created_at || "").localeCompare(
+// // // //                 String(a.date || a.created_at || "")
+// // // //               )
+// // // //             )
+// // // //             .slice(0, 40);
+
+// // // //           const rows = [
 // // // //             { label: "Désignation", value: designation(it) },
 // // // //             { label: "Catégorie", value: it._catName || "—" },
 // // // //             { label: "Marque", value: it.mark || "—" },
 // // // //             { label: "Modèle", value: it.modele || "—" },
 // // // //             { label: "Couleur", value: it.color || it.couleur || "—" },
 // // // //             { label: "Niveau", value: it.level ?? "—" },
-// // // //             { label: "Stock total", value: convertirQuantite(it.stockReel ?? 0, it) },
+// // // //             { label: "Stock total", value: convertirQuantite(stockReel, it) },
 // // // //             { label: "Stock minimal", value: it.minimal_stock ?? "—" },
+// // // //             {
+// // // //               label: "Valeur en stock (FC)",
+// // // //               value: String(valeurEnStock(it, stockReel)),
+// // // //             },
 // // // //             { label: "Prix de vente (FC)", value: `${it.sale_price_fc ?? "—"}` },
-// // // //           ],
-// // // //         }));
-// // // //       } else if (type === "entrepot") {
+// // // //           ];
+
+// // // //           // Stocks initiaux (table stocks.stock_actual) par entrepôt
+// // // //           for (const s of stocksItem) {
+// // // //             const entName = entMap[Number(s.entrepot_id)] || `Entrepôt #${s.entrepot_id}`;
+// // // //             rows.push({
+// // // //               label: `Stock initial · ${entName}`,
+// // // //               value: convertirQuantite(s.stock_actual ?? 0, it),
+// // // //             });
+// // // //           }
+
+// // // //           return {
+// // // //             typeLabel: "Article",
+// // // //             title: designation(it),
+// // // //             imageSrc: getArticleImageSrc(it),
+// // // //             imageCaption: designation(it),
+// // // //             imageSub: it._catName || "",
+// // // //             imageSize: 36,
+// // // //             rows,
+// // // //             articlesTitle: "Mouvements récents",
+// // // //             articles: mvtsItem.map((m) => {
+// // // //               const entName = entMap[Number(m.entrepot_id)] || "—";
+// // // //               return {
+// // // //                 img: null,
+// // // //                 name: `${m.type || "—"} · qté ${m.qty ?? "—"}`,
+// // // //                 extra: `Entrepôt : ${entName}${m.nature ? " · " + m.nature : ""}`,
+// // // //                 stock: formatDateFr(m.date || m.created_at),
+// // // //               };
+// // // //             }),
+// // // //           };
+// // // //         });
+// // // //         } else if (type === "entrepot") {
 // // // //         pages = items.map((e) => {
 // // // //           const refName = e.name || e.reference || "—";
 // // // //           const entItems = e._articles || e.articles || [];
@@ -16639,27 +18658,40 @@
 // // // //           };
 // // // //         });
 // // // //       } else if (type === "mouvement" || type === "archive") {
-// // // //         pages = items.map((m) => {
-// // // //           const it = m._item;
-// // // //           const ent = m._entrepot;
-// // // //           const entName = ent?.name || ent?.reference || "—";
+// // // //         // Grouper par date (1 page = 1 jour), style liste comme catégorie
+// // // //         const byDate = {};
+// // // //         for (const m of items) {
+// // // //           const k = dateKeyOf(m.date || m.created_at || m) || "sans-date";
+// // // //           if (!byDate[k]) byDate[k] = [];
+// // // //           byDate[k].push(m);
+// // // //         }
+// // // //         const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+// // // //         pages = dates.map((dk) => {
+// // // //           const rows = byDate[dk];
 // // // //           return {
-// // // //             typeLabel: type === "archive" ? "Archive" : "Mouvement",
-// // // //             title: it ? designation(it) : `Mouvement #${m.id}`,
-// // // //             imageSrc: it ? getArticleImageSrc(it) : null,
-// // // //             imageCaption: it ? designation(it) : "—",
-// // // //             imageSub: `${m.type || "—"} · ${formatDateFr(m.date || m.created_at)}`,
-// // // //             imageSize: 32,
+// // // //             typeLabel: type === "archive" ? "Archives" : "Mouvements",
+// // // //             title: formatDateFr(dk) || dk,
+// // // //             imageCaption: formatDateFr(dk) || dk,
+// // // //             imageSub: `${rows.length} mouvement(s)`,
 // // // //             rows: [
-// // // //               { label: "Article", value: it ? designation(it) : `Article #${m.item_id}` },
-// // // //               { label: "Type", value: m.type || "—" },
-// // // //               { label: "Nature", value: m.nature || "—" },
-// // // //               { label: "Entrepôt", value: entName },
-// // // //               { label: "Quantité", value: String(m.qty ?? "—") },
-// // // //               { label: "Date", value: formatDateFr(m.date || m.created_at) },
+// // // //               { label: "Date", value: formatDateFr(dk) || dk },
+// // // //               { label: "Nombre de mouvements", value: String(rows.length) },
 // // // //             ],
+// // // //             articlesTitle: "Détail des mouvements",
+// // // //             articles: rows.map((m) => {
+// // // //               const it = m._item;
+// // // //               const ent = m._entrepot;
+// // // //               const entName = ent?.name || ent?.reference || "—";
+// // // //               return {
+// // // //                 img: it ? getArticleImageSrc(it) : null,
+// // // //                 name: it ? designation(it) : `Article #${m.item_id ?? "—"}`,
+// // // //                 extra: `${m.type || "—"} · qté ${m.qty ?? "—"}${m.nature ? " · " + m.nature : ""}`,
+// // // //                 stock: `Entrepôt : ${entName}`,
+// // // //               };
+// // // //             }),
 // // // //           };
 // // // //         });
+      
 // // // //       } else if (type === "audit") {
 // // // //         pages = items.map((r) => {
 // // // //           const who =
@@ -17665,8 +19697,6 @@
 
 
 
-
-
 // // // /**
 // // //  * DetailsCarousel — Detail All
 // // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
@@ -17838,76 +19868,87 @@
 
 // // // const calculerStockTotal = (itemId, stocks, mouvements, stock_ajustments) => {
 // // //   const itemIdNum = Number(itemId);
+// // //   const getItemId = (row) => Number(row?.item_id ?? row?.itemId ?? row?.id_item ?? 0);
+// // //   const getEntId = (row) => Number(row?.entrepot_id ?? row?.entrepotId ?? row?.warehouse_id ?? 0);
+// // //   const isActive = (row) => Number(row?.deleted ?? row?.is_deleted ?? 0) === 0;
+// // //   const getQty = (row) => Number(row?.qty ?? row?.quantite ?? row?.quantity ?? 0);
+// // //   const normType = (row) =>
+// // //     String(row?.type ?? "")
+// // //       .toLowerCase()
+// // //       .normalize("NFD")
+// // //       .replace(/[\u0300-\u036f]/g, "");
+// // //   const isEntree = (row) => {
+// // //     const t = normType(row);
+// // //     return t === "entree" || t.startsWith("entr");
+// // //   };
+// // //   const isSortie = (row) => {
+// // //     const t = normType(row);
+// // //     return t === "sortie" || t.startsWith("sort");
+// // //   };
+
 // // //   const entrepots = new Set();
-// // //   (stocks || [])
-// // //     .filter((s) => Number(s.item_id) === itemIdNum && Number(s.deleted ?? 0) === 0)
-// // //     .forEach((s) => entrepots.add(Number(s.entrepot_id)));
-// // //   (mouvements || [])
-// // //     .filter((m) => Number(m.item_id) === itemIdNum && Number(m.deleted ?? 0) === 0)
-// // //     .forEach((m) => entrepots.add(Number(m.entrepot_id)));
-// // //   (stock_ajustments || [])
-// // //     .filter((a) => Number(a.item_id) === itemIdNum && Number(a.deleted ?? 0) === 0)
-// // //     .forEach((a) => entrepots.add(Number(a.entrepot_id)));
+// // //   (stocks || []).filter((s) => getItemId(s) === itemIdNum && isActive(s)).forEach((s) => entrepots.add(getEntId(s)));
+// // //   (mouvements || []).filter((m) => getItemId(m) === itemIdNum && isActive(m)).forEach((m) => entrepots.add(getEntId(m)));
+// // //   (stock_ajustments || []).filter((a) => getItemId(a) === itemIdNum && isActive(a)).forEach((a) => entrepots.add(getEntId(a)));
+
 // // //   let total = 0;
 // // //   entrepots.forEach((entrepotId) => {
 // // //     const stock = (stocks || []).find(
-// // //       (s) =>
-// // //         Number(s.item_id) === itemIdNum &&
-// // //         Number(s.entrepot_id) === entrepotId &&
-// // //         Number(s.deleted ?? 0) === 0
+// // //       (s) => getItemId(s) === itemIdNum && getEntId(s) === entrepotId && isActive(s)
 // // //     );
-// // //     let q = Number(stock?.stock_actual ?? 0);
+// // //     let q = Number(stock?.stock_actual ?? stock?.stockActual ?? stock?.quantite ?? 0);
+
 // // //     (mouvements || [])
-// // //       .filter(
-// // //         (m) =>
-// // //           Number(m.item_id) === itemIdNum &&
-// // //           Number(m.entrepot_id) === entrepotId &&
-// // //           Number(m.deleted ?? 0) === 0
-// // //       )
+// // //       .filter((m) => getItemId(m) === itemIdNum && getEntId(m) === entrepotId && isActive(m))
 // // //       .forEach((m) => {
-// // //         const qty = Number(m.qty ?? 0);
-// // //         if (m.type === "Entrée") q += qty;
-// // //         else if (m.type === "Sortie") q -= qty;
+// // //         const qty = getQty(m);
+// // //         if (isEntree(m)) q += qty;
+// // //         else if (isSortie(m)) q -= qty;
 // // //       });
+
 // // //     (stock_ajustments || [])
-// // //       .filter(
-// // //         (a) =>
-// // //           Number(a.item_id) === itemIdNum &&
-// // //           Number(a.entrepot_id) === entrepotId &&
-// // //           Number(a.deleted ?? 0) === 0
-// // //       )
+// // //       .filter((a) => getItemId(a) === itemIdNum && getEntId(a) === entrepotId && isActive(a))
 // // //       .forEach((a) => {
-// // //         const qty = Number(a.qty ?? 0);
-// // //         if (a.type === "Entrée") q += qty;
-// // //         else if (a.type === "Sortie") q -= qty;
+// // //         const qty = getQty(a);
+// // //         if (isEntree(a)) q += qty;
+// // //         else if (isSortie(a)) q -= qty;
 // // //       });
+
 // // //     total += q;
 // // //   });
 // // //   return total;
 // // // };
 
-// // // function stockReelEntrepot(itemId, entrepotId, stocks, mouvements, ajustements) {
+// // // /** Stock réel pour UN entrepôt précis */
+// // // const stockReelEntrepot = (itemId, entrepotId, stocks, mouvements, stock_ajustments) => {
+// // //   const itemIdNum = Number(itemId);
+// // //   const entId = Number(entrepotId);
+// // //   const getItemId = (row) => Number(row?.item_id ?? row?.itemId ?? 0);
+// // //   const getEntId = (row) => Number(row?.entrepot_id ?? row?.entrepotId ?? 0);
+// // //   const isActive = (row) => Number(row?.deleted ?? 0) === 0;
+// // //   const getQty = (row) => Number(row?.qty ?? row?.quantite ?? 0);
+// // //   const normType = (row) =>
+// // //     String(row?.type ?? "")
+// // //       .toLowerCase()
+// // //       .normalize("NFD")
+// // //       .replace(/[\u0300-\u036f]/g, "");
+// // //   const isEntree = (row) => normType(row).startsWith("entr");
+// // //   const isSortie = (row) => normType(row).startsWith("sort");
+
 // // //   const stock = (stocks || []).find(
-// // //     (s) =>
-// // //       Number(s.item_id) === Number(itemId) &&
-// // //       Number(s.entrepot_id) === Number(entrepotId) &&
-// // //       Number(s.deleted ?? 0) === 0
+// // //     (s) => getItemId(s) === itemIdNum && getEntId(s) === entId && isActive(s)
 // // //   );
-// // //   let q = Number(stock?.stock_actual ?? 0);
-// // //   [...(mouvements || []), ...(ajustements || [])]
-// // //     .filter(
-// // //       (m) =>
-// // //         Number(m.item_id) === Number(itemId) &&
-// // //         Number(m.entrepot_id) === Number(entrepotId) &&
-// // //         Number(m.deleted ?? 0) === 0
-// // //     )
+// // //   let q = Number(stock?.stock_actual ?? stock?.stockActual ?? 0);
+
+// // //   [...(mouvements || []), ...(stock_ajustments || [])]
+// // //     .filter((m) => getItemId(m) === itemIdNum && getEntId(m) === entId && isActive(m))
 // // //     .forEach((m) => {
-// // //       const qty = Number(m.qty ?? 0);
-// // //       if (m.type === "Entrée") q += qty;
-// // //       else if (m.type === "Sortie") q -= qty;
+// // //       const qty = getQty(m);
+// // //       if (isEntree(m)) q += qty;
+// // //       else if (isSortie(m)) q -= qty;
 // // //     });
 // // //   return q;
-// // // }
+// // // };
 
 // // // function loadScript(src) {
 // // //   return new Promise((resolve, reject) => {
@@ -18615,7 +20656,7 @@
 // // //             }),
 // // //           };
 // // //         });
-// // //         } else if (type === "entrepot") {
+// // //             } else if (type === "entrepot") {
 // // //         pages = items.map((e) => {
 // // //           const refName = e.name || e.reference || "—";
 // // //           const entItems = e._articles || e.articles || [];
@@ -18693,22 +20734,40 @@
 // // //         });
       
 // // //       } else if (type === "audit") {
-// // //         pages = items.map((r) => {
-// // //           const who =
-// // //             userMap[Number(r.user_id)] ||
-// // //             (r.user_id != null ? `Utilisateur #${r.user_id}` : "—");
+// // //         // Grouper par date — 1 page = 1 jour
+// // //         const byDate = {};
+// // //         for (const r of items) {
+// // //           const k = dateKeyOf(r.created_at || r.date || r) || "sans-date";
+// // //           if (!byDate[k]) byDate[k] = [];
+// // //           byDate[k].push(r);
+// // //         }
+// // //         const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+// // //         pages = dates.map((dk) => {
+// // //           const rows = byDate[dk];
 // // //           return {
-// // //             typeLabel: "Audit",
-// // //             title: r.action || "Action",
+// // //             typeLabel: "Journal d'audit",
+// // //             title: formatDateFr(dk) || dk,
+// // //             imageCaption: formatDateFr(dk) || dk,
+// // //             imageSub: `${rows.length} action(s)`,
 // // //             rows: [
-// // //               { label: "Action", value: r.action || "—" },
-// // //               { label: "Entité", value: r.entity || r.entity_type || "—" },
-// // //               { label: "Effectué par", value: who },
-// // //               { label: "Date", value: formatDateFr(r.created_at || r.date) },
-// // //               { label: "Détails", value: r.details || r.message || "—" },
+// // //               { label: "Date", value: formatDateFr(dk) || dk },
+// // //               { label: "Nombre d'actions", value: String(rows.length) },
 // // //             ],
+// // //             articlesTitle: "Actions du jour",
+// // //             articles: rows.map((r) => {
+// // //               const who =
+// // //                 userMap[Number(r.user_id)] ||
+// // //                 (r.user_id != null ? `Utilisateur #${r.user_id}` : "—");
+// // //               return {
+// // //                 img: null,
+// // //                 name: `${r.action || "—"} · ${r.entity || r.entity_type || ""}`,
+// // //                 extra: `par ${who}`,
+// // //                 stock: formatDateFr(r.created_at || r.date),
+// // //               };
+// // //             }),
 // // //           };
 // // //         });
+      
 // // //       } else {
 // // //         cover = null;
 // // //         pages = [
@@ -19697,6 +21756,7 @@
 
 
 
+
 // // /**
 // //  * DetailsCarousel — Detail All
 // //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
@@ -20402,8 +22462,64 @@
 // //               _catName: catMap[Number(i.category_item)] || "—",
 // //             }));
 // //         } else if (type === "entrepot") {
-// //           const res = await getEntrepots();
-// //           list = (res.data || []).filter((e) => Number(e.deleted ?? 0) === 0);
+// //           const [res, its] = await Promise.all([
+// //             getEntrepots(),
+// //             getItems().catch(() => ({ data: [] })),
+// //           ]);
+// //           const allItems = (its.data || []).filter((i) => Number(i.deleted ?? 0) === 0);
+// //           list = (res.data || [])
+// //             .filter((e) => Number(e.deleted ?? 0) === 0)
+// //             .map((e) => {
+// //               // Même logique que la page Entrepots : articles présents via table stocks
+// //               const itemIds = new Set();
+// //               (stocks || []).forEach((s) => {
+// //                 if (
+// //                   Number(s.entrepot_id) === Number(e.id) &&
+// //                   s.item_id != null &&
+// //                   Number(s.deleted ?? 0) === 0
+// //                 ) {
+// //                   itemIds.add(Number(s.item_id));
+// //                 }
+// //               });
+// //               // Compléter avec mouvements actifs si stock pas encore posé
+// //               (mouvements || []).forEach((m) => {
+// //                 if (
+// //                   Number(m.entrepot_id) === Number(e.id) &&
+// //                   m.item_id != null &&
+// //                   Number(m.deleted ?? 0) === 0
+// //                 ) {
+// //                   itemIds.add(Number(m.item_id));
+// //                 }
+// //               });
+// //               (ajustements || []).forEach((a) => {
+// //                 if (
+// //                   Number(a.entrepot_id) === Number(e.id) &&
+// //                   a.item_id != null &&
+// //                   Number(a.deleted ?? 0) === 0
+// //                 ) {
+// //                   itemIds.add(Number(a.item_id));
+// //                 }
+// //               });
+// //               const arts = allItems
+// //                 .filter((i) => itemIds.has(Number(i.id)))
+// //                 .map((i) => ({
+// //                   ...i,
+// //                   stockEntrepot: stockReelEntrepot(
+// //                     i.id,
+// //                     e.id,
+// //                     stocks,
+// //                     mouvements,
+// //                     ajustements
+// //                   ),
+// //                   stockReel: calculerStockTotal(
+// //                     i.id,
+// //                     stocks,
+// //                     mouvements,
+// //                     ajustements
+// //                   ),
+// //                 }));
+// //               return { ...e, _articles: arts };
+// //             });
 // //         } else if (type === "utilisateur") {
 // //           const res = await getUsers();
 // //           list = (res.data || []).filter((u) => Number(u.deleted ?? 0) === 0);
@@ -20479,11 +22595,23 @@
 // //   const openFull = () => {
 // //     if (!current) return;
 // //     if (type === "audit") {
-// //       navigate(`/details/audit/${current.id}`);
+// //       const aid = current.id ?? current.sync_id;
+// //       if (aid != null && aid !== "") {
+// //         navigate(`/details/audit/${encodeURIComponent(aid)}`);
+// //       } else {
+// //         const dk = dateKeyOf(current.created_at || current.date || current);
+// //         navigate(`/details/audit/${encodeURIComponent(dk || "all")}`);
+// //       }
 // //       return;
 // //     }
 // //     if (type === "archive") {
-// //       navigate(`/details/archive/${current.id}`);
+// //       const aid = current.id ?? current.sync_id;
+// //       if (aid != null && aid !== "") {
+// //         navigate(`/details/archive/${encodeURIComponent(aid)}`);
+// //       } else {
+// //         const dk = dateKeyOf(current.date || current.created_at || current);
+// //         navigate(`/details/archive/${encodeURIComponent(dk || "all")}`);
+// //       }
 // //       return;
 // //     }
 // //     if (type === "mouvement") {
@@ -21351,6 +23479,8 @@
 // // }
 
 // // function EntrepotSlide({ ent, onOpen }) {
+// //   const arts = ent._articles || [];
+// //   const n = arts.length;
 // //   return (
 // //     <GlassCard>
 // //       <div style={{ padding: "1.5rem" }}>
@@ -21381,7 +23511,12 @@
 // //             >
 // //               {ent.name || ent.reference || `Entrepôt #${ent.id}`}
 // //             </div>
-// //             <Badge color="#a78bfa">ID #{ent.id}</Badge>
+// //             <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+// //               <Badge color="#a78bfa">ID #{ent.id}</Badge>
+// //               <Badge color="#4ade80">
+// //                 {n} article{n > 1 ? "s" : ""}
+// //               </Badge>
+// //             </div>
 // //           </div>
 // //         </div>
 // //         <InfoGrid
@@ -21391,10 +23526,17 @@
 // //               label: "Localisation",
 // //               value: ent.location || ent.localisation || "—",
 // //             },
-// //             { icon: Hash, label: "Référence", value: ent.reference || "—" },
+// //             { icon: Hash, label: "Référence / Nom", value: ent.reference || ent.name || "—" },
 // //             { icon: Boxes, label: "Capacité", value: ent.capacity ?? "—" },
+// //             { icon: Package, label: "Articles présents", value: String(n) },
 // //           ]}
 // //         />
+// //         {n > 0 && (
+// //           <div style={{ marginTop: 12, fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+// //             {arts.slice(0, 5).map((a) => designation(a)).join(" · ")}
+// //             {n > 5 ? ` · +${n - 5}` : ""}
+// //           </div>
+// //         )}
 // //         <button type="button" onClick={onOpen} style={btnOpen}>
 // //           <ExternalLink size={14} /> Fiche complète
 // //         </button>
@@ -21747,8 +23889,6 @@
 
 
 
-// // // import { useEffect, useRef } from "react";
-
 
 
 
@@ -21761,10 +23901,11 @@
 //  * DetailsCarousel — Detail All
 //  * Routes : /details-carousel | /details-carousel/:type | /details-carousel/:type/:key
 //  * PDF unifié (cover + 1 page / élément) — StockFlow · L'étoile du matin
+//  * Helpers stock alignés avec Details (calculerStockTotal / stockReelEntrepot)
 //  */
 
 // import { useEffect, useState, useCallback } from "react";
-// import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
+// import { useNavigate, useParams, useLocation } from "react-router-dom";
 // import {
 //   ArrowLeft,
 //   ChevronUp,
@@ -21779,13 +23920,11 @@
 //   Hash,
 //   Boxes,
 //   CheckCircle,
-//   Mail,
 //   Shield,
 //   Clock,
 //   Info,
 //   Download,
 //   Layers,
-//   X,
 //   FileText,
 //   ExternalLink,
 //   Share2,
@@ -21821,7 +23960,7 @@
 // const APP_NAME = "StockFlow";
 // const COMPANY_NAME = "L'étoile du matin";
 
-// /* ========== HELPERS ========== */
+// /* ========== HELPERS (alignés avec Details) ========== */
 // function buildImageFileName(item) {
 //   const parts = [item?.name, item?.mark, item?.modele]
 //     .map((p) => (p || "").toString().trim())
@@ -21926,6 +24065,7 @@
 //   return `${qte}`;
 // }
 
+// /** Stock total (toutes entrepôts) — version robuste */
 // const calculerStockTotal = (itemId, stocks, mouvements, stock_ajustments) => {
 //   const itemIdNum = Number(itemId);
 //   const getItemId = (row) => Number(row?.item_id ?? row?.itemId ?? row?.id_item ?? 0);
@@ -22075,8 +24215,6 @@
 //   });
 // }
 
-
-// /* ========== PDF PREMIUM — barres thème, cover, 1 page/entité ========== */
 // function getPdfThemeColors(themeName) {
 //   const map = {
 //     "dark-galaxy": { primary: [139, 92, 246], secondary: [99, 102, 241], accent: [167, 139, 250] },
@@ -22103,20 +24241,16 @@
 //   return map[themeName] || map["dark-galaxy"];
 // }
 
-
 // function userDisplayName(u) {
 //   if (!u) return null;
 //   const n = [u.first_name, u.name, u.middle_name].filter(Boolean).join(" ").trim();
 //   return n || u.email || null;
 // }
 
-
 // function dateKeyOf(v) {
 //   if (v == null || v === "") return "";
 //   const s = String(v);
-//   // ISO date or datetime → YYYY-MM-DD
 //   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-//   // try Date parse
 //   const d = new Date(s);
 //   if (!Number.isNaN(d.getTime())) {
 //     const y = d.getFullYear();
@@ -22141,6 +24275,7 @@
 //         imageSize: sections[0]?.imageSize || 32,
 //         rows: (sections || []).flatMap((s) => s.rows || []),
 //         articles: sections.find((s) => s.articles)?.articles || null,
+//         articlesTitle: sections.find((s) => s.articlesTitle)?.articlesTitle,
 //         _extraLines: (sections || [])
 //           .slice(1)
 //           .filter((s) => s.lines && s.lines.length)
@@ -22257,7 +24392,9 @@
 //             doc.text(subLines, margin + size + 5, y + 19);
 //           }
 //           y += size + 8;
-//         } catch { /* skip */ }
+//         } catch {
+//           /* skip */
+//         }
 //       }
 //     } else if (page.title) {
 //       doc.setFont("helvetica", "bold");
@@ -22344,7 +24481,9 @@
 //             try {
 //               doc.addImage(dataUrl, "JPEG", margin + 10, y, 14, 14);
 //               xText = margin + 28;
-//             } catch { /* skip */ }
+//             } catch {
+//               /* skip */
+//             }
 //           }
 //         }
 //         doc.setFont("helvetica", "bold");
@@ -22368,10 +24507,6 @@
 //   }
 //   return doc;
 // }
-
-
-
-
 
 // const TYPE_LABEL = {
 //   categorie: "Catégories",
@@ -22442,9 +24577,12 @@
 //             .filter((c) => Number(c.deleted ?? 0) === 0)
 //             .map((c) => ({
 //               ...c,
-//               _articles: (its.data || []).filter(
-//                 (i) => Number(i.category_item) === Number(c.id)
-//               ),
+//               _articles: (its.data || [])
+//                 .filter((i) => Number(i.category_item) === Number(c.id))
+//                 .map((i) => ({
+//                   ...i,
+//                   stockReel: calculerStockTotal(i.id, stocks, mouvements, ajustements),
+//                 })),
 //             }));
 //         } else if (type === "article") {
 //           const [its, cats] = await Promise.all([
@@ -22470,7 +24608,6 @@
 //           list = (res.data || [])
 //             .filter((e) => Number(e.deleted ?? 0) === 0)
 //             .map((e) => {
-//               // Même logique que la page Entrepots : articles présents via table stocks
 //               const itemIds = new Set();
 //               (stocks || []).forEach((s) => {
 //                 if (
@@ -22481,7 +24618,6 @@
 //                   itemIds.add(Number(s.item_id));
 //                 }
 //               });
-//               // Compléter avec mouvements actifs si stock pas encore posé
 //               (mouvements || []).forEach((m) => {
 //                 if (
 //                   Number(m.entrepot_id) === Number(e.id) &&
@@ -22540,7 +24676,7 @@
 //               _item: itemMap[Number(m.item_id)],
 //               _entrepot: entMap[Number(m.entrepot_id)],
 //             }))
-//             .sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
+//             .sort((a, b) => dateKeyOf(b.date || b.created_at).localeCompare(dateKeyOf(a.date || a.created_at)));
 //         } else if (type === "archive") {
 //           const [arch, its, ents] = await Promise.all([
 //             getMouvementsArchives().catch(() => ({ data: [] })),
@@ -22551,7 +24687,7 @@
 //           const entMap = Object.fromEntries((ents.data || []).map((e) => [Number(e.id), e]));
 //           let rows = (arch.data || []).filter((m) => Number(m.deleted ?? 0) === 0);
 //           if (filterKey && filterKey !== "all") {
-//             rows = rows.filter((r) => dateKeyOf(r) === String(filterKey));
+//             rows = rows.filter((r) => dateKeyOf(r.date || r.created_at) === String(filterKey));
 //           }
 //           list = rows
 //             .map((m) => ({
@@ -22560,7 +24696,7 @@
 //               _item: itemMap[Number(m.item_id)],
 //               _entrepot: entMap[Number(m.entrepot_id)],
 //             }))
-//             .sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
+//             .sort((a, b) => dateKeyOf(b.date || b.created_at).localeCompare(dateKeyOf(a.date || a.created_at)));
 //         } else if (type === "audit") {
 //           const logsRes = await getAuditLogs().catch(() => ({ data: [] }));
 //           const raw = logsRes.data ?? logsRes ?? [];
@@ -22568,9 +24704,11 @@
 //             (r) => Number(r.deleted ?? 0) === 0
 //           );
 //           if (filterKey && filterKey !== "all") {
-//             rows = rows.filter((r) => dateKeyOf(r) === String(filterKey));
+//             rows = rows.filter((r) => dateKeyOf(r.created_at || r.date) === String(filterKey));
 //           }
-//           list = rows.sort((a, b) => dateKeyOf(b).localeCompare(dateKeyOf(a)));
+//           list = rows.sort((a, b) =>
+//             dateKeyOf(b.created_at || b.date).localeCompare(dateKeyOf(a.created_at || a.date))
+//           );
 //         } else {
 //           throw new Error(`Type inconnu : ${type}`);
 //         }
@@ -22641,8 +24779,7 @@
 //         lines.push(`Entrepôt : ${current.name || current.reference}`);
 //       else if (type === "utilisateur")
 //         lines.push(`User : ${current.first_name || ""} ${current.name || ""}`);
-//       else if (type === "audit")
-//         lines.push(`Action : ${current.action || "—"}`);
+//       else if (type === "audit") lines.push(`Action : ${current.action || "—"}`);
 //       else if (type === "mouvement" || type === "archive")
 //         lines.push(
 //           `Mvt : ${current.type || "—"} · ${
@@ -22663,7 +24800,9 @@
 //         for (const u of uRes.data || []) {
 //           userMap[Number(u.id)] = userDisplayName(u) || `Utilisateur #${u.id}`;
 //         }
-//       } catch {}
+//       } catch {
+//         /* ignore */
+//       }
 
 //       let pages = [];
 //       let cover = {
@@ -22696,7 +24835,6 @@
 //           };
 //         });
 //       } else if (type === "article") {
-//         // Charger stocks + mouvements pour enrichir chaque fiche
 //         const [stocksRes, mvtRes, ajRes, entsRes] = await Promise.all([
 //           getStocks().catch(() => ({ data: [] })),
 //           getMouvementsRecents().catch(() => ({ data: [] })),
@@ -22755,7 +24893,6 @@
 //             { label: "Prix de vente (FC)", value: `${it.sale_price_fc ?? "—"}` },
 //           ];
 
-//           // Stocks initiaux (table stocks.stock_actual) par entrepôt
 //           for (const s of stocksItem) {
 //             const entName = entMap[Number(s.entrepot_id)] || `Entrepôt #${s.entrepot_id}`;
 //             rows.push({
@@ -22784,7 +24921,7 @@
 //             }),
 //           };
 //         });
-//             } else if (type === "entrepot") {
+//       } else if (type === "entrepot") {
 //         pages = items.map((e) => {
 //           const refName = e.name || e.reference || "—";
 //           const entItems = e._articles || e.articles || [];
@@ -22827,7 +24964,6 @@
 //           };
 //         });
 //       } else if (type === "mouvement" || type === "archive") {
-//         // Grouper par date (1 page = 1 jour), style liste comme catégorie
 //         const byDate = {};
 //         for (const m of items) {
 //           const k = dateKeyOf(m.date || m.created_at || m) || "sans-date";
@@ -22860,9 +24996,7 @@
 //             }),
 //           };
 //         });
-      
 //       } else if (type === "audit") {
-//         // Grouper par date — 1 page = 1 jour
 //         const byDate = {};
 //         for (const r of items) {
 //           const k = dateKeyOf(r.created_at || r.date || r) || "sans-date";
@@ -22895,7 +25029,6 @@
 //             }),
 //           };
 //         });
-      
 //       } else {
 //         cover = null;
 //         pages = [
@@ -22985,7 +25118,6 @@
 //           boxSizing: "border-box",
 //         }}
 //       >
-//         {/* TOP */}
 //         <div
 //           style={{
 //             display: "flex",
@@ -23013,7 +25145,6 @@
 //           </button>
 //         </div>
 
-//         {/* HEADER uniform */}
 //         <div
 //           style={{
 //             display: "flex",
@@ -23146,7 +25277,6 @@
 //         <Footer />
 //       </div>
 
-//       {/* EXPORT MODAL — same flow as Details */}
 //       {pdfOpen && (
 //         <div
 //           onClick={closeExport}
@@ -23357,66 +25487,63 @@
 // }
 
 // /* ========== SLIDES ========== */
-// function CategorieSlide({ cat, navigate, onOpen }) {
+// function CategorieSlide({ cat, onOpen }) {
 //   const imgSrc = toIconSrc(cat.icon);
 //   const articles = cat._articles || [];
 //   return (
-//     <>
-//       <GlassCard>
+//     <GlassCard>
+//       <div
+//         style={{
+//           display: "flex",
+//           gap: "1.25rem",
+//           padding: "1.5rem",
+//           alignItems: "center",
+//           flexWrap: "wrap",
+//         }}
+//       >
 //         <div
 //           style={{
+//             width: 100,
+//             height: 100,
+//             borderRadius: 22,
+//             flexShrink: 0,
+//             overflow: "hidden",
+//             background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
 //             display: "flex",
-//             gap: "1.25rem",
-//             padding: "1.5rem",
 //             alignItems: "center",
-//             flexWrap: "wrap",
+//             justifyContent: "center",
+//             boxShadow: "0 10px 28px var(--glow-color)",
 //           }}
 //         >
+//           {imgSrc ? (
+//             <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+//           ) : (
+//             <Tag size={36} color="#fff" />
+//           )}
+//         </div>
+//         <div style={{ flex: 1, minWidth: 160 }}>
 //           <div
 //             style={{
-//               width: 100,
-//               height: 100,
-//               borderRadius: 22,
-//               flexShrink: 0,
-//               overflow: "hidden",
-//               background:
-//                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
-//               display: "flex",
-//               alignItems: "center",
-//               justifyContent: "center",
-//               boxShadow: "0 10px 28px var(--glow-color)",
+//               fontFamily: "Syne, sans-serif",
+//               fontWeight: 900,
+//               fontSize: "1.45rem",
+//               color: "var(--text)",
 //             }}
 //           >
-//             {imgSrc ? (
-//               <img src={imgSrc} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-//             ) : (
-//               <Tag size={36} color="#fff" />
-//             )}
+//             {cat.name}
 //           </div>
-//           <div style={{ flex: 1, minWidth: 160 }}>
-//             <div
-//               style={{
-//                 fontFamily: "Syne, sans-serif",
-//                 fontWeight: 900,
-//                 fontSize: "1.45rem",
-//                 color: "var(--text)",
-//               }}
-//             >
-//               {cat.name}
-//             </div>
-//             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-//               <Badge color="#60a5fa">ID #{cat.id}</Badge>
-//               <Badge color="#4ade80">
-//                 {articles.length} article{articles.length > 1 ? "s" : ""}
-//               </Badge>
-//             </div>
-//             <button type="button" onClick={onOpen} style={btnOpen}>
-//               <ExternalLink size={14} /> Fiche complète
-//             </button>
+//           <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+//             <Badge color="#60a5fa">ID #{cat.id}</Badge>
+//             <Badge color="#4ade80">
+//               {articles.length} article{articles.length > 1 ? "s" : ""}
+//             </Badge>
 //           </div>
+//           <button type="button" onClick={onOpen} style={btnOpen}>
+//             <ExternalLink size={14} /> Fiche complète
+//           </button>
 //         </div>
-//       </GlassCard>
-//     </>
+//       </div>
+//     </GlassCard>
 //   );
 // }
 
@@ -23490,8 +25617,7 @@
 //               width: 72,
 //               height: 72,
 //               borderRadius: 18,
-//               background:
-//                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+//               background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
 //               display: "flex",
 //               alignItems: "center",
 //               justifyContent: "center",
@@ -23533,7 +25659,10 @@
 //         />
 //         {n > 0 && (
 //           <div style={{ marginTop: 12, fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-//             {arts.slice(0, 5).map((a) => designation(a)).join(" · ")}
+//             {arts
+//               .slice(0, 5)
+//               .map((a) => designation(a))
+//               .join(" · ")}
 //             {n > 5 ? ` · +${n - 5}` : ""}
 //           </div>
 //         )}
@@ -23564,8 +25693,7 @@
 //             width: 80,
 //             height: 80,
 //             borderRadius: "50%",
-//             background:
-//               "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+//             background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
 //             display: "flex",
 //             alignItems: "center",
 //             justifyContent: "center",
@@ -23683,8 +25811,7 @@
 //               width: 64,
 //               height: 64,
 //               borderRadius: 16,
-//               background:
-//                 "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
+//               background: "linear-gradient(135deg, var(--gradient-start), var(--gradient-end))",
 //               display: "flex",
 //               alignItems: "center",
 //               justifyContent: "center",
@@ -23886,13 +26013,6 @@
 //   cursor: "pointer",
 //   boxShadow: "0 8px 22px var(--glow-color)",
 // };
-
-
-
-
-
-
-
 
 
 
@@ -24247,6 +26367,65 @@ function userDisplayName(u) {
   return n || u.email || null;
 }
 
+/** Quantité de mouvement lisible (jamais 1.666667 brut) */
+function formatMvtQty(m, item) {
+  if (item) return convertirQuantite(m?.qty ?? m?.quantite ?? 0, item);
+  const q = Number(m?.qty ?? m?.quantite ?? 0);
+  if (!Number.isFinite(q)) return String(m?.qty ?? "—");
+  return Number.isInteger(q) ? String(q) : q.toFixed(3).replace(/\.?0+$/, "");
+}
+
+function normNature(m) {
+  return String(m?.nature || m?._src || m?.type || m?.motif || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function isRegularisation(m) {
+  const n = normNature(m);
+  return (
+    n.includes("regular") ||
+    n.includes("ajust") ||
+    n === "ajustment" ||
+    n.includes("correction")
+  );
+}
+
+function isPerteOuUsage(m) {
+  const n = normNature(m);
+  return (
+    n.includes("perte") ||
+    n.includes("usage") ||
+    n.includes("deprec") ||
+    n.includes("casse") ||
+    n.includes("destruction") ||
+    n.includes("vol")
+  );
+}
+
+/** Lignes niveau (qty_by_box / qty_by_card) selon structure article */
+function niveauQtyRows(item) {
+  const level = Number(item?.level) || 1;
+  const rows = [{ label: "Niveau", value: String(level) }];
+  const nomBoite = item?.niveau_2 || "Boîte";
+  const nomCarton = item?.niveau_3 || "Carton";
+  const nomPiece = item?.niveau_1 || "Pièce";
+  if (level >= 2) {
+    rows.push({
+      label: `${nomPiece}s par ${nomBoite.toLowerCase()}`,
+      value: String(item?.qty_by_box ?? "—"),
+    });
+  }
+  if (level >= 3) {
+    rows.push({
+      label: `${nomBoite}s par ${nomCarton.toLowerCase()}`,
+      value: String(item?.qty_by_card ?? "—"),
+    });
+  }
+  return rows;
+}
+
 function dateKeyOf(v) {
   if (v == null || v === "") return "";
   const s = String(v);
@@ -24453,7 +26632,8 @@ async function buildPremiumPdf(opts) {
       }
     }
 
-    if (page.articles && page.articles.length) {
+    const drawArticlesList = async (title, arts) => {
+      if (!arts || !arts.length) return;
       y += 4;
       ensure(12);
       doc.setFillColor(...primary);
@@ -24461,10 +26641,10 @@ async function buildPremiumPdf(opts) {
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
-      doc.text(page.articlesTitle || "Articles liés", margin + 3, y + 5.4);
+      doc.text(String(title || "Liste"), margin + 3, y + 5.4);
       y += 12;
-      for (let idx = 0; idx < page.articles.length; idx++) {
-        const art = page.articles[idx];
+      for (let idx = 0; idx < arts.length; idx++) {
+        const art = arts[idx];
         const rowH = 18;
         ensure(rowH + 2);
         doc.setDrawColor(...lineGray);
@@ -24496,6 +26676,15 @@ async function buildPremiumPdf(opts) {
         const sub = [art.extra, art.stock].filter(Boolean).join("  ·  ");
         if (sub) doc.text(sub, xText, y + 12);
         y += rowH;
+      }
+    };
+
+    if (page.articles && page.articles.length) {
+      await drawArticlesList(page.articlesTitle || "Articles liés", page.articles);
+    }
+    if (Array.isArray(page.lists)) {
+      for (const lst of page.lists) {
+        await drawArticlesList(lst.title, lst.articles);
       }
     }
   }
@@ -24835,17 +27024,21 @@ export default function DetailsCarousel() {
           };
         });
       } else if (type === "article") {
-        const [stocksRes, mvtRes, ajRes, entsRes] = await Promise.all([
+        const [stocksRes, mvtRes, ajRes, entsRes, catsRes] = await Promise.all([
           getStocks().catch(() => ({ data: [] })),
           getMouvementsRecents().catch(() => ({ data: [] })),
           getStockAjustments().catch(() => ({ data: [] })),
           getEntrepots().catch(() => ({ data: [] })),
+          getCategories().catch(() => ({ data: [] })),
         ]);
         const allStocks = stocksRes.data || [];
         const allMvt = mvtRes.data || [];
         const allAj = ajRes.data || [];
         const entMap = Object.fromEntries(
           (entsRes.data || []).map((e) => [Number(e.id), e.name || e.reference || "Entrepôt"])
+        );
+        const catById = Object.fromEntries(
+          (catsRes.data || []).map((c) => [Number(c.id), c])
         );
 
         const valeurEnStock = (it, stockReel) => {
@@ -24858,15 +27051,18 @@ export default function DetailsCarousel() {
           return Math.round(price * mult * qty * 100) / 100;
         };
 
-        pages = items.map((it) => {
+        pages = [];
+        for (const it of items) {
           const stockReel =
             typeof it.stockReel === "number"
               ? it.stockReel
               : calculerStockTotal(it.id, allStocks, allMvt, allAj);
+          const cat = catById[Number(it.category_item)];
+          const catIcon = toIconSrc(cat?.icon);
           const stocksItem = allStocks.filter(
             (s) => Number(s.item_id) === Number(it.id) && Number(s.deleted ?? 0) === 0
           );
-          const mvtsItem = [...allMvt, ...allAj]
+          const allMvtsItem = [...allMvt, ...allAj]
             .filter(
               (m) => Number(m.item_id) === Number(it.id) && Number(m.deleted ?? 0) === 0
             )
@@ -24874,53 +27070,106 @@ export default function DetailsCarousel() {
               String(b.date || b.created_at || "").localeCompare(
                 String(a.date || a.created_at || "")
               )
-            )
-            .slice(0, 40);
+            );
+          const recents = allMvtsItem.filter(
+            (m) => !isRegularisation(m) && !isPerteOuUsage(m)
+          );
+          const regs = allMvtsItem.filter((m) => isRegularisation(m));
+          const pertes = allMvtsItem.filter((m) => isPerteOuUsage(m));
 
-          const rows = [
-            { label: "Désignation", value: designation(it) },
-            { label: "Catégorie", value: it._catName || "—" },
-            { label: "Marque", value: it.mark || "—" },
-            { label: "Modèle", value: it.modele || "—" },
-            { label: "Couleur", value: it.color || it.couleur || "—" },
-            { label: "Niveau", value: it.level ?? "—" },
-            { label: "Stock total", value: convertirQuantite(stockReel, it) },
-            { label: "Stock minimal", value: it.minimal_stock ?? "—" },
-            {
-              label: "Valeur en stock (FC)",
-              value: String(valeurEnStock(it, stockReel)),
-            },
-            { label: "Prix de vente (FC)", value: `${it.sale_price_fc ?? "—"}` },
-          ];
-
-          for (const s of stocksItem) {
-            const entName = entMap[Number(s.entrepot_id)] || `Entrepôt #${s.entrepot_id}`;
-            rows.push({
-              label: `Stock initial · ${entName}`,
-              value: convertirQuantite(s.stock_actual ?? 0, it),
+          const lists = [];
+          if (stocksItem.length) {
+            lists.push({
+              title: "Stock initial par entrepôt",
+              articles: stocksItem.map((s) => ({
+                img: null,
+                name: entMap[Number(s.entrepot_id)] || `Entrepôt #${s.entrepot_id}`,
+                extra: "Stock initial (table stocks)",
+                stock: convertirQuantite(s.stock_actual ?? 0, it),
+              })),
+            });
+          }
+          if (recents.length) {
+            lists.push({
+              title: "Mouvements récents",
+              articles: recents.slice(0, 40).map((m) => {
+                const entName = entMap[Number(m.entrepot_id)] || "—";
+                return {
+                  img: null,
+                  name: `${m.type || "—"} · ${formatMvtQty(m, it)}`,
+                  extra: `Entrepôt : ${entName}${m.nature ? " · " + m.nature : ""}`,
+                  stock: formatDateFr(m.date || m.created_at),
+                };
+              }),
+            });
+          }
+          if (regs.length) {
+            lists.push({
+              title: "Régularisations",
+              articles: regs.slice(0, 40).map((m) => {
+                const entName = entMap[Number(m.entrepot_id)] || "—";
+                return {
+                  img: null,
+                  name: `${m.type || "—"} · ${formatMvtQty(m, it)}`,
+                  extra: `Entrepôt : ${entName}${m.nature ? " · " + m.nature : ""}`,
+                  stock: formatDateFr(m.date || m.created_at),
+                };
+              }),
+            });
+          }
+          if (pertes.length) {
+            lists.push({
+              title: "Pertes / Usages",
+              articles: pertes.slice(0, 40).map((m) => {
+                const entName = entMap[Number(m.entrepot_id)] || "—";
+                return {
+                  img: null,
+                  name: `${m.type || "—"} · ${formatMvtQty(m, it)}`,
+                  extra: `Entrepôt : ${entName}${m.nature ? " · " + m.nature : ""}`,
+                  stock: formatDateFr(m.date || m.created_at),
+                };
+              }),
             });
           }
 
-          return {
+          pages.push({
             typeLabel: "Article",
             title: designation(it),
-            imageSrc: getArticleImageSrc(it),
+            imageSrc: getArticleImageSrc(it) || catIcon,
             imageCaption: designation(it),
-            imageSub: it._catName || "",
+            imageSub: cat?.name || it._catName || "",
             imageSize: 36,
-            rows,
-            articlesTitle: "Mouvements récents",
-            articles: mvtsItem.map((m) => {
-              const entName = entMap[Number(m.entrepot_id)] || "—";
-              return {
-                img: null,
-                name: `${m.type || "—"} · qté ${m.qty ?? "—"}`,
-                extra: `Entrepôt : ${entName}${m.nature ? " · " + m.nature : ""}`,
-                stock: formatDateFr(m.date || m.created_at),
-              };
-            }),
-          };
-        });
+            rows: [
+              { label: "Désignation", value: designation(it) },
+              { label: "Catégorie", value: cat?.name || it._catName || "—" },
+              { label: "Modèle", value: it.modele || it.mark || "—" },
+              { label: "Couleur", value: it.color || it.couleur || "—" },
+              ...niveauQtyRows(it),
+              { label: "Stock total", value: convertirQuantite(stockReel, it) },
+              { label: "Stock minimal", value: it.minimal_stock ?? "—" },
+              {
+                label: "Valeur en stock (FC)",
+                value: String(valeurEnStock(it, stockReel)),
+              },
+              { label: "Prix de vente (FC)", value: `${it.sale_price_fc ?? "—"}` },
+            ],
+            lists,
+          });
+          if (catIcon) {
+            pages.push({
+              typeLabel: "Catégorie",
+              title: cat?.name || "Catégorie",
+              imageSrc: catIcon,
+              imageCaption: cat?.name || "Catégorie",
+              imageSub: cat?.description || "",
+              imageSize: 40,
+              rows: [
+                { label: "Nom", value: cat?.name || "—" },
+                { label: "Description", value: cat?.description || "—" },
+              ],
+            });
+          }
+        }
       } else if (type === "entrepot") {
         pages = items.map((e) => {
           const refName = e.name || e.reference || "—";
@@ -24990,7 +27239,7 @@ export default function DetailsCarousel() {
               return {
                 img: it ? getArticleImageSrc(it) : null,
                 name: it ? designation(it) : `Article #${m.item_id ?? "—"}`,
-                extra: `${m.type || "—"} · qté ${m.qty ?? "—"}${m.nature ? " · " + m.nature : ""}`,
+                extra: `${m.type || "—"} · ${it ? formatMvtQty(m, it) : m.qty ?? "—"}${m.nature ? " · " + m.nature : ""}`,
                 stock: `Entrepôt : ${entName}`,
               };
             }),
